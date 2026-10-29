@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b2a1d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PromoFruits OS">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%23f4b41a%27/%3E%3Cpath d=%27M32 24c-9 0-14 6-14 14s5 14 14 14 14-6 14-14-5-14-14-14zM32 24l-6-14M32 24V8M32 24l6-16%27 fill=%27none%27 stroke=%27%230a2a1c%27 stroke-width=%275%27 stroke-linecap=%27round%27/%3E%3C/svg%3E">
+<title>PromoFruits OS · Approvisionnement</title>
+<!--
+  ╔══════════════════════════════════════════════════════════════════════════╗
+  ║  PromoFruits OS · Module Approvisionnement (prototype v5)                ║
+  ║  Proposition VERIION pour Promo Fruits Bénin                             ║
+  ║  Fichier unique : HTML + CSS + JS, sans compilation, ouvrable hors-ligne ║
+  ║                                                                          ║
+  ║  PLAN DU FICHIER                                                         ║
+  ║   1. Design system (CSS) : tokens, composants, responsive mobile-first   ║
+  ║   2. Référentiels : organigramme, rôles, droits, étapes, icônes          ║
+  ║   3. État & données de démonstration (graine déterministe)               ║
+  ║   4. Règles métier : agronomie, volumes, alertes, tâches, finances       ║
+  ║   5. Composants UI : tableaux, graphiques SVG, feuilles (modales)        ║
+  ║   6. Vues : une fonction par module                                      ║
+  ║   7. Actions : un registre unique (data-a), formulaires, workflows       ║
+  ║   8. Démarrage : persistance locale, événements, rendu                   ║
+  ╚══════════════════════════════════════════════════════════════════════════╝
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Export Excel : chargé à la demande ; repli automatique en CSV si indisponible -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   1. DESIGN SYSTEM
+   Mobile-first : les styles de base ciblent le téléphone ; les @media
+   (min-width) enrichissent pour tablette (≥ 720px) et bureau (≥ 1024px).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 1.1 Tokens (thème clair par défaut) */
+:root{
+  --bg:#f4f6f1; --surface:#fff; --surface-2:#eef3ea; --ink:#10201a; --ink-2:#47594f; --ink-3:#7a8a80; --line:#e0e7da;
+  --brand:#0f6b43; --brand-ink:#fff; --brand-soft:#e1f1e7;
+  --gold:#f4b41a; --gold-ink:#2a1d00; --gold-soft:#fff2cf;
+  --ok:#1b8450; --ok-soft:#ddf2e4; --warn:#9a6200; --warn-soft:#fff0c9;
+  --err:#c0392b; --err-soft:#fbe4e0; --info:#2460c2; --info-soft:#e1ecfb;
+  --side:#0a2a1c; --side-ink:#c9dfd1; --side-mute:#7fa08c;
+  --r-s:8px; --r-m:12px; --r-l:18px;
+  --sh-1:0 1px 2px rgba(16,32,26,.05),0 1px 1px rgba(16,32,26,.03);
+  --sh-2:0 10px 30px -12px rgba(16,32,26,.28);
+  --f-ui:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --f-disp:'Bricolage Grotesque','Inter',system-ui,sans-serif;
+  --sab:env(safe-area-inset-bottom,0px); --sat:env(safe-area-inset-top,0px);
+  color-scheme:light;
+}
+/* Thème sombre : suit le système, sauf choix explicite de l'utilisateur */
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme=light]){
+    --bg:#0c1611; --surface:#13221a; --surface-2:#1a2d22; --ink:#e7efe9; --ink-2:#a9bcb0; --ink-3:#7f9387; --line:#243a2d;
+    --brand:#3fbf80; --brand-ink:#06150d; --brand-soft:#173a29;
+    --gold-soft:#3a2d0b; --ok:#4cc386; --ok-soft:#14382a; --warn:#e9b04c; --warn-soft:#3a2d0b;
+    --err:#f27c6c; --err-soft:#42201b; --info:#7aa7f0; --info-soft:#17284a;
+    --sh-2:0 10px 30px -12px rgba(0,0,0,.7); color-scheme:dark;
+  }
+}
+:root[data-theme=dark]{
+  --bg:#0c1611; --surface:#13221a; --surface-2:#1a2d22; --ink:#e7efe9; --ink-2:#a9bcb0; --ink-3:#7f9387; --line:#243a2d;
+  --brand:#3fbf80; --brand-ink:#06150d; --brand-soft:#173a29;
+  --gold-soft:#3a2d0b; --ok:#4cc386; --ok-soft:#14382a; --warn:#e9b04c; --warn-soft:#3a2d0b;
+  --err:#f27c6c; --err-soft:#42201b; --info:#7aa7f0; --info-soft:#17284a;
+  --sh-2:0 10px 30px -12px rgba(0,0,0,.7); color-scheme:dark;
+}
+
+/* 1.2 Base */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:calc(var(--sat) + 70px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-ui);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,h4{margin:0;font-family:var(--f-disp);font-weight:700;letter-spacing:-.015em;text-wrap:balance}
+h1{font-size:clamp(22px,4.5vw,30px);line-height:1.15}
+h2{font-size:clamp(20px,3.6vw,24px);line-height:1.2}
+h3{font-size:16px}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--brand)}
+img,svg{max-width:100%}
+[hidden]{display:none!important}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px;border-radius:6px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mute{color:var(--ink-3)} .sm{font-size:13px} .xs{font-size:12px} .r{text-align:right} .b{font-weight:600}
+.ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.sp{justify-content:space-between} .grow{flex:1;min-width:0}
+.stack{display:grid;gap:12px} .stack-l{display:grid;gap:18px}
+.num{font-variant-numeric:tabular-nums}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
+svg.i.s{width:16px;height:16px}
+
+/* 1.3 Coque applicative : barre latérale (bureau) · barre basse (mobile) */
+.shell{min-height:100dvh}
+.side{display:none}
+.main{min-width:0;padding-bottom:calc(76px + var(--sab))}
+.top{position:sticky;top:0;z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:calc(10px + var(--sat)) 14px 10px;background:var(--bg);background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid var(--line)}
+.top h1{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.page{padding:16px 14px 28px;max-width:1240px;margin:0 auto;display:grid;gap:16px}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--surface);border-top:1px solid var(--line);padding:6px 6px calc(6px + var(--sab));box-shadow:0 -8px 24px -16px rgba(0,0,0,.35)}
+.tabbar button{display:grid;justify-items:center;gap:2px;border:0;background:none;padding:6px 2px;border-radius:10px;color:var(--ink-3);font-size:11px;font-weight:600;min-width:0}
+.tabbar button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabbar button.on{color:var(--brand);background:var(--brand-soft)}
+.banner{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--warn-soft);color:var(--warn);font-size:13px;font-weight:600}
+@media(min-width:1024px){
+  .shell{display:grid;grid-template-columns:260px 1fr}
+  .side{display:flex;flex-direction:column;position:sticky;top:0;height:100dvh;background:var(--side);color:var(--side-ink);padding:18px 12px;gap:2px;overflow-y:auto}
+  .tabbar{display:none}
+  .main{padding-bottom:0}
+  .top{padding:12px 28px}.top h1{font-size:20px}
+  .page{padding:24px 28px 48px;gap:20px}
+}
+/* Barre latérale */
+.brand{display:flex;gap:12px;align-items:center;padding:4px 8px 16px;color:#fff}
+.brand .mark{width:40px;height:40px;border-radius:12px;background:var(--gold);color:var(--gold-ink);display:grid;place-items:center;flex:none;overflow:hidden}
+.brand .mark img{width:100%;height:100%;object-fit:cover}
+.brand strong{display:block;font:700 15px var(--f-disp);line-height:1.2}
+.brand small{color:var(--side-mute);font-size:12px}
+.side .grp{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--side-mute);padding:14px 10px 6px}
+.nav{display:flex;gap:12px;align-items:center;width:100%;border:0;background:none;color:inherit;text-align:left;padding:10px 12px;border-radius:10px;font-weight:500}
+.nav:hover{background:rgba(255,255,255,.07)}
+.nav.on{background:var(--gold);color:var(--gold-ink);font-weight:700}
+.side .foot{margin-top:auto;padding:14px 10px 0;font-size:12px;color:var(--side-mute);line-height:1.4}
+
+/* 1.4 Cartes, KPI, titres de section */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);padding:16px;box-shadow:var(--sh-1);min-width:0}
+.card.flat{box-shadow:none;background:var(--surface-2);border-color:transparent}
+.card h3{margin-bottom:10px}
+.head{display:grid;gap:4px}
+.head p{color:var(--ink-2);max-width:68ch}
+.grid{display:grid;gap:12px}
+.g-kpi{grid-template-columns:repeat(2,1fr)}
+.g-2{grid-template-columns:1fr}
+@media(min-width:720px){.g-kpi{grid-template-columns:repeat(4,1fr)}.g-3{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1024px){.g-2{grid-template-columns:1.4fr 1fr}.g-2e{grid-template-columns:1fr 1fr}}
+.kpi{display:grid;gap:6px;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--sh-1)}
+.kpi .lab{display:flex;gap:8px;align-items:center;color:var(--ink-2);font-size:13px}
+.kpi .ico{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand);flex:none}
+.kpi .ico.gold{background:var(--gold-soft);color:var(--warn)} .kpi .ico.red{background:var(--err-soft);color:var(--err)} .kpi .ico.blue{background:var(--info-soft);color:var(--info)}
+.kpi strong{font:700 clamp(20px,5vw,26px)/1.1 var(--f-disp);font-variant-numeric:tabular-nums}
+.kpi small{font-size:12px;color:var(--ink-3)}
+.hero{display:grid;gap:14px;padding:18px;border-radius:var(--r-l);color:#fff;background:linear-gradient(135deg,#0b3d28 0%,#0f6b43 62%,#18835a 100%);position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(244,180,26,.10) 0 2px,transparent 2px 22px),repeating-linear-gradient(-45deg,rgba(244,180,26,.10) 0 2px,transparent 2px 22px);mask-image:linear-gradient(90deg,transparent 35%,#000);-webkit-mask-image:linear-gradient(90deg,transparent 35%,#000);pointer-events:none}
+.hero>*{position:relative;z-index:1}
+.hero h1{color:#fff}.hero p{color:#d3e9dc}
+.hero .big{font:800 clamp(34px,9vw,52px)/1 var(--f-disp);font-variant-numeric:tabular-nums}
+.hero .progress{background:rgba(255,255,255,.2)}.hero .progress i{background:var(--gold)}
+
+/* 1.5 Boutons */
+.btn{display:inline-flex;gap:8px;align-items:center;justify-content:center;border:1px solid transparent;border-radius:var(--r-m);padding:10px 16px;font-weight:600;background:var(--brand);color:var(--brand-ink);min-height:42px;white-space:nowrap;transition:transform .08s,filter .15s}
+.btn:hover{filter:brightness(1.08)} .btn:active{transform:scale(.98)}
+.btn.soft{background:var(--brand-soft);color:var(--brand)}
+.btn.line{background:var(--surface);border-color:var(--line);color:var(--ink)}
+.btn.gold{background:var(--gold);color:var(--gold-ink)}
+.btn.danger{background:var(--err-soft);color:var(--err)}
+.btn.ghost{background:none;color:var(--ink-2)}
+.btn.sm{min-height:34px;padding:6px 12px;font-size:13px;border-radius:10px}
+.btn.icon{padding:0;width:42px}.btn.icon.sm{width:34px}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.btn.block{width:100%}
+.bell{position:relative}
+.bell b{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:99px;background:var(--err);color:#fff;font-size:11px;line-height:18px;text-align:center;padding:0 4px}
+
+/* 1.6 Pastilles, progression, onglets, puces */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.badge.ok{background:var(--ok-soft);color:var(--ok)} .badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.err{background:var(--err-soft);color:var(--err)} .badge.info{background:var(--info-soft);color:var(--info)} .badge.gold{background:var(--gold-soft);color:var(--warn)}
+.progress{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.progress i{display:block;height:100%;border-radius:99px;background:var(--brand);transition:width .5s}
+.progress i.gold{background:var(--gold)}
+.steps{display:flex;gap:3px;margin-top:6px}.steps i{height:5px;width:16px;border-radius:3px;background:var(--line)}.steps i.on{background:var(--brand)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabs button{border:0;background:none;padding:10px 12px;color:var(--ink-3);font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--ink);border-color:var(--gold)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 12px;font-weight:600;font-size:13px;white-space:nowrap}
+.chip.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.chip em{font-style:normal;font-size:11px;opacity:.75}
+
+/* 1.7 Formulaires */
+.field{display:grid;gap:5px;font-size:13px;color:var(--ink-2);font-weight:500;min-width:0}
+.field>small{color:var(--ink-3);font-weight:400}
+input,select,textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);padding:10px 12px;min-height:42px;font-size:16px;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 22%,transparent)}
+input[type=checkbox]{width:18px;height:18px;min-height:0;accent-color:var(--brand)}
+input[type=color]{padding:3px;height:42px}
+.form{display:grid;gap:12px}
+.form2{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:720px){.form2{grid-template-columns:1fr 1fr}.form2 .full{grid-column:1/-1}}
+.filters{display:grid;gap:8px;grid-template-columns:1fr 1fr}
+.filters .wide{grid-column:1/-1}
+@media(min-width:720px){.filters{display:flex;flex-wrap:wrap;align-items:center}.filters>*{width:auto;min-width:150px}.filters .wide{flex:1;min-width:220px}}
+.search{position:relative}.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-3);pointer-events:none}.search input{padding-left:38px}
+
+/* 1.8 Tableaux : cartes empilées sur mobile, vrai tableau dès 820px */
+.tw{overflow:visible}
+.t{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.t thead{display:none}
+.t,.t tbody,.t tr,.t td{display:block}
+.t tr{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);padding:10px 12px;margin-bottom:10px}
+.t tr.click{cursor:pointer}.t tr.click:active{background:var(--surface-2)}
+.t td{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:6px 0;border:0;text-align:right}
+.t td::before{content:attr(data-l);color:var(--ink-3);font-size:12px;text-align:left;flex:none}
+.t td.m{display:block;text-align:left;padding-top:0;font-size:15px}.t td.m::before{display:none}
+.t td.x{justify-content:flex-end;padding-bottom:0}.t td.x::before{display:none}
+.t td:empty{display:none}
+@media(min-width:820px){
+  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface)}
+  .t{display:table}.t thead{display:table-header-group}.t tbody{display:table-row-group}.t tr{display:table-row;background:none;border:0;border-radius:0;padding:0;margin:0}
+  .t th{text-align:left;font-size:12px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;background:var(--surface-2);white-space:nowrap}
+  .t th.r{text-align:right}
+  .t td{display:table-cell;padding:11px 12px;border-top:1px solid var(--line);text-align:left;vertical-align:middle}
+  .t td.r{text-align:right}.t td::before{display:none}.t td.m{display:table-cell;font-size:inherit}
+  .t td.x{text-align:right;white-space:nowrap}.t td:empty{display:table-cell}
+  .t tr.click:hover{background:var(--surface-2)}
+}
+
+/* 1.9 Alertes et listes d'actions */
+.alert{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:var(--r-m);background:var(--surface-2);border-left:4px solid var(--ink-3);font-size:14px;margin-bottom:8px;flex-wrap:wrap}
+.alert:last-child{margin-bottom:0}
+.alert.err{border-color:var(--err);background:var(--err-soft)} .alert.warn{border-color:var(--gold);background:var(--warn-soft)} .alert.ok{border-color:var(--ok);background:var(--ok-soft)}
+.alert .txt{flex:1;min-width:180px}
+.todo{display:flex;gap:12px;align-items:center;padding:12px;border-radius:var(--r-m);background:var(--surface);border:1px solid var(--line);margin-bottom:8px;text-align:left;width:100%}
+.todo .ico{width:34px;height:34px;border-radius:10px;background:var(--gold-soft);color:var(--warn);display:grid;place-items:center;flex:none}
+.empty{display:grid;justify-items:center;gap:6px;text-align:center;padding:28px 12px;color:var(--ink-3)}
+.empty svg{width:34px;height:34px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 14px}.kv dt{color:var(--ink-3)}.kv dd{margin:0;text-align:right;font-weight:600}
+.rowline{display:grid;grid-template-columns:96px 1fr auto;gap:10px;align-items:center;padding:7px 0;font-size:14px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:baseline}
+
+/* 1.10 Calendrier des camions (grille 6 jours × 4 semaines) */
+.cal{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.cal .dh{font-size:11px;color:var(--ink-3);text-align:center;font-weight:600}
+.cal button{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 2px;display:grid;gap:1px;justify-items:center;min-height:62px;font-size:11px;color:var(--ink-2)}
+.cal button b{font:700 17px var(--f-disp);color:var(--ink)}
+.cal button.f{background:var(--ok-soft);border-color:transparent}.cal button.t{background:var(--warn-soft);border-color:transparent}.cal button.x{background:var(--err-soft);border-color:transparent}
+.cal button.today{outline:2px solid var(--gold)}
+
+/* 1.11 Feuilles : bas d'écran sur mobile, tiroir/modale sur grand écran */
+.ov{position:fixed;inset:0;z-index:60;background:rgba(7,18,12,.55);display:flex;align-items:flex-end;justify-content:center;animation:fade .18s}
+.sheet{width:100%;max-height:92dvh;overflow:auto;background:var(--surface);border-radius:22px 22px 0 0;padding:8px 18px calc(18px + var(--sab));display:grid;gap:14px;align-content:start;animation:up .22s cubic-bezier(.2,.8,.2,1);box-shadow:var(--sh-2)}
+.sheet::before{content:"";width:40px;height:4px;border-radius:9px;background:var(--line);justify-self:center;margin-bottom:2px}
+.sheet .hd{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.sheet .hd h2{font-size:20px}
+@media(min-width:720px){
+  .ov{align-items:center}
+  .sheet{width:min(540px,94vw);max-height:88dvh;border-radius:var(--r-l);padding:20px;animation:pop .2s}
+  .sheet.wide{width:min(820px,94vw)}
+  .sheet::before{display:none}
+  .ov.drawer{justify-content:flex-end;align-items:stretch}
+  .ov.drawer .sheet{width:min(520px,100vw);max-height:none;height:100dvh;border-radius:0;animation:slide .24s cubic-bezier(.2,.8,.2,1)}
+}
+.ov.drawer .sheet{max-height:94dvh}
+.sheet:focus{outline:none}
+@keyframes fade{from{opacity:0}}@keyframes up{from{transform:translateY(40px);opacity:.4}}
+@keyframes pop{from{transform:scale(.97);opacity:0}}@keyframes slide{from{transform:translateX(40px);opacity:.4}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* 1.12 Toasts · résultats de recherche · ticket */
+.toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + var(--sab));z-index:80;display:grid;gap:8px;width:min(92vw,420px);pointer-events:none}
+@media(min-width:1024px){.toasts{bottom:24px}}
+.toast{background:var(--ink);color:var(--surface);padding:12px 16px;border-radius:var(--r-m);box-shadow:var(--sh-2);font-size:14px;animation:up .2s;display:flex;gap:10px;align-items:center}
+.toast.err{background:var(--err);color:#fff}
+.results{position:absolute;left:0;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--sh-2);overflow:hidden;z-index:50}
+.results button{display:flex;gap:10px;justify-content:space-between;width:100%;border:0;background:none;padding:10px 14px;text-align:left}
+.results button:hover,.results button:focus{background:var(--surface-2)}
+.ticket{display:grid;gap:10px;border:1px dashed var(--line);border-radius:var(--r-m);padding:14px}
+.ticket h2{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.ticket table{width:100%;border-collapse:collapse}.ticket td{padding:6px 0;border-bottom:1px dotted var(--line)}.ticket td:last-child{text-align:right;font-weight:600}
+.calc{display:grid;gap:6px;padding:14px;border-radius:var(--r-m);background:var(--brand-soft);color:var(--ink)}
+.calc .big{font:800 30px/1 var(--f-disp);color:var(--brand)}
+.map{width:100%;background:var(--surface-2);border-radius:var(--r-m);border:1px solid var(--line)}
+.picker{display:grid;gap:8px}
+.pickrow{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface)}
+
+/* 1.13 Impression : seul le ticket est imprimé */
+@media print{
+  body *{visibility:hidden}
+  #tkt,#tkt *{visibility:visible}
+  #tkt{position:absolute;left:0;top:0;width:100%;border:0}
+  .noprint{display:none!important}
+}
+
+/* 1.14 Barre supérieure : profil simulé, recherche globale */
+.top .sp{flex:1}
+.top .prof{order:10;flex-basis:100%;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--ink-3)}
+.top .prof select{min-height:38px;font-size:14px;padding:6px 10px;font-weight:600}
+.top .srch{display:none;order:9;flex-basis:100%}.top .srch.open{display:block}
+.top .logo-m{width:34px;height:34px;border-radius:10px;background:var(--gold);color:var(--gold-ink);display:grid;place-items:center;flex:none;overflow:hidden}
+.top .logo-m img{width:100%;height:100%;object-fit:cover}
+.stepper{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.stepper .stp{display:flex;gap:8px;align-items:center;padding:6px 12px 6px 6px;border-radius:99px;background:var(--surface-2);font-size:13px;font-weight:500}
+.stepper .stp b{width:24px;height:24px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-size:12px}
+.stepper .stp.gold b{background:var(--gold);color:var(--gold-ink)}
+.stepper svg{color:var(--ink-3)}
+@media(min-width:1024px){
+  .top .prof{order:0;flex-basis:auto}.top .srch{display:block;order:0;flex-basis:auto;width:280px}
+  .only-m{display:none!important}
+}
+</style>
+</head>
+<body>
+<div id="app" class="shell" aria-live="off"></div>
+<div id="layer"></div>
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+<noscript>PromoFruits OS nécessite JavaScript pour fonctionner.</noscript>
+<script>
+'use strict';
+/* ═══════════════════════════════════════════════════════════════════════════
+   2. UTILITAIRES & RÉFÉRENTIELS
+   ═══════════════════════════════════════════════════════════════════════════ */
+const DAY = 864e5;
+const $ = (s, r = document) => r.querySelector(s);
+/** Échappe tout texte saisi par l'utilisateur avant insertion dans le HTML (anti-XSS). */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nf0 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
+const fmt = n => nf0.format(Math.round(n || 0));
+const fmt1 = n => nf1.format(n || 0);
+const F = n => fmt(n) + '\u00A0F';          // montant en francs CFA
+const TN = n => fmt1(n) + '\u00A0t';        // tonnes
+const pad = (n, l = 4) => String(n).padStart(l, '0');
+
+/* Dates : on travaille en jours entiers, à minuit local (pas d'heure d'été au Bénin) */
+const midnight = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const today = () => midnight(new Date());
+const addDays = (d, n) => { const x = midnight(d); x.setDate(x.getDate() + n); return x; };
+const diffDays = (a, b) => Math.round((midnight(a) - midnight(b)) / DAY);
+const iso = d => { const x = midnight(d); return `${x.getFullYear()}-${pad(x.getMonth() + 1, 2)}-${pad(x.getDate(), 2)}`; };
+const parse = s => midnight(new Date(s + 'T12:00:00'));
+const fdate = d => midnight(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }).replace('.', '');
+const fdateL = d => midnight(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+const dow = d => (midnight(d).getDay() + 6) % 7;                // lundi = 0 … dimanche = 6
+const monday = (d = new Date()) => addDays(d, -dow(d));
+const nowHM = () => new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+/** Générateur pseudo-aléatoire à graine : la démo est identique à chaque ouverture. */
+const rng = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+/* 2.1 Icônes (SVG en ligne, trait 1.8px) — remplace les emojis pour un rendu net et cohérent */
+const ICONS = {
+  grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/>',
+  users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M17 14c2.5 0 4.5 2 4.5 4.5"/>',
+  sprout: '<path d="M12 21v-9"/><path d="M12 12c0-3.6-2.5-6-6.5-6 0 3.8 2.6 6 6.5 6z"/><path d="M12 14.5c0-3 2.2-5.2 6-5.2 0 3.3-2.3 5.2-6 5.2z"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  truck: '<path d="M2.5 6.5h11v9.5h-11z"/><path d="M13.5 9.5h4l3 3v3.5h-7z"/><circle cx="7" cy="17.8" r="1.9"/><circle cx="17" cy="17.8" r="1.9"/>',
+  scale: '<path d="M12 4v16M6.5 20h11M5 7h14"/><path d="M5 7 2.6 13a3 3 0 0 0 5.8 0z"/><path d="M19 7l-2.4 6a3 3 0 0 0 5.8 0z"/>',
+  cash: '<rect x="2.5" y="6" width="19" height="12" rx="2.2"/><circle cx="12" cy="12" r="2.8"/><path d="M6 12h.01M18 12h.01"/>',
+  wallet: '<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H19v3"/><path d="M4 7.5V17a2 2 0 0 0 2 2h13.5a1 1 0 0 0 1-1V9.5a1 1 0 0 0-1-1H6.5A2.5 2.5 0 0 1 4 7.5z"/><circle cx="16.5" cy="13.7" r="1.1"/>',
+  map: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
+  shield: '<path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>',
+  cog: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>',
+  bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8"/>',
+  moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  download: '<path d="M12 4v11M7.5 11 12 15.5 16.5 11M5 20h14"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  chev: '<path d="M9 6l6 6-6 6"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  wifi: '<path d="M3 9.5a14 14 0 0 1 18 0M6 13a9.5 9.5 0 0 1 12 0M9.2 16.4a5 5 0 0 1 5.6 0"/><circle cx="12" cy="19.5" r=".8" fill="currentColor"/>',
+  wifioff: '<path d="M3 9.5a14 14 0 0 1 18 0M6 13a9.5 9.5 0 0 1 12 0M9.2 16.4a5 5 0 0 1 5.6 0M4 4l16 16"/>',
+  printer: '<path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="6.5" rx="1"/>',
+  alert: '<path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.2M12 17.2v.01"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  pine: '<path d="M12 10c-3.3 0-5.2 2.3-5.2 5.4 0 3.1 1.9 5.4 5.2 5.4s5.2-2.300 5.2-5.400c0-3.100-1.900-5.400-5.200-5.400z"/><path d="M12 10 9.600 3.800M12 10V3M12 10l2.400-6.200"/>',
+  trend: '<path d="M4 16l5-5 4 4 7-8M15 7h5v5"/>',
+  file: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.500 12h6M9.500 16h6"/>',
+  camera: '<path d="M4 8h3l1.500-2h7L17 8h3v11H4z"/><circle cx="12" cy="13.500" r="3.300"/>',
+  refresh: '<path d="M20 11a8 8 0 0 0-14-4M4 5v3.500h3.500M4 13a8 8 0 0 0 14 4M20 19v-3.500h-3.500"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.500 6.500l4 4"/>',
+  trash: '<path d="M4.500 7h15M9 7V4.500h6V7M6.500 7l1 13h9l1-13"/>',
+  pin: '<path d="M12 21v-6M7.500 15h9l-1.200-5.500 2.200-3.500h-11l2.200 3.500z"/>',
+  phone: '<path d="M5 4h4l2 5-2.500 1.500a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+  layers: '<path d="M12 3 3 8l9 5 9-5zM3 12.500l9 5 9-5M3 16.500l9 5 9-5"/>'
+};
+const ic = (n, c = '') => `<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+
+/* 2.2 Organigramme de Promo Fruits Bénin → rôles de l'application
+   Chaque profil correspond à un poste de l'organigramme officiel (DG, DAF, DPM, S/FC, S/MGE…). */
+const ROLES = {
+  dg:     { n: 'DG / DGA',                         org: 'Direction Générale',       home: 'dash' },
+  ci:     { n: 'Contrôle Interne',                 org: 'Direction Générale',       home: 'dash' },
+  dpm:    { n: 'DPM · Production & Maintenance',   org: 'DPM',                      home: 'dash' },
+  appro:  { n: 'C/Appro MP Fruits',                org: 'DPM · Usine de jus',       home: 'dash' },
+  suivi:  { n: 'Agt/S-T · Suivi-Terrain',          org: 'DPM · Usine de jus',       home: 'tif'  },
+  pesage: { n: 'Agt/Pesage',                       org: 'DPM · Usine de jus',       home: 'pes'  },
+  daf:    { n: 'Responsable DAF',                  org: 'DAF',                      home: 'av'   },
+  compta: { n: 'C/C · Chargé de comptabilité',     org: 'DAF · S/FC',               home: 'pay'  },
+  caiss:  { n: 'Caissier',                         org: 'DAF · S/FC',               home: 'pay'  },
+  trans:  { n: 'Chauffeur · Transporteur',         org: 'DAF · S/MGE',              home: 'flot' },
+  admin:  { n: 'Administrateur système',           org: 'Système',                  home: 'param'}
+};
+const ORG_ORDER = ['Direction Générale', 'DPM', 'DPM · Usine de jus', 'DAF', 'DAF · S/FC', 'DAF · S/MGE', 'Système'];
+
+/* 2.3 Modules (ordre = ordre du menu) */
+const MODS = {
+  dash:  { n: 'Tableau de bord',    s: 'Accueil',   i: 'grid' },
+  prod:  { n: 'Producteurs',        s: 'Producteurs', i: 'users' },
+  tif:   { n: 'Parcelles & TIF',    s: 'Parcelles', i: 'sprout' },
+  plan:  { n: 'Planning livraisons', s: 'Planning', i: 'calendar' },
+  flot:  { n: 'Flotte & missions',  s: 'Missions',  i: 'truck' },
+  pes:   { n: 'Pont-bascule',       s: 'Pesée',     i: 'scale' },
+  av:    { n: 'Avances & crédits',  s: 'Avances',   i: 'cash' },
+  pay:   { n: 'Paiements',          s: 'Paiements', i: 'wallet' },
+  agt:   { n: 'Agents & zones',     s: 'Zones',     i: 'map' },
+  aud:   { n: 'Droits & audit',     s: 'Audit',     i: 'shield' },
+  param: { n: 'Paramètres',         s: 'Réglages',  i: 'cog' }
+};
+
+/* 2.4 Droits d'accès — SOURCE UNIQUE : menu, boutons, tâches et matrice d'audit en découlent.
+   E = saisie/exécution · V = validation · L = lecture seule · (absent) = pas d'accès */
+const ACCESS = {
+  dash:  { dg: 'L', ci: 'L', dpm: 'L', appro: 'L', daf: 'L', compta: 'L', admin: 'L' },
+  prod:  { appro: 'E', dpm: 'E', suivi: 'L', dg: 'L', ci: 'L', admin: 'L' },
+  tif:   { suivi: 'V', appro: 'L', dpm: 'L', dg: 'L', ci: 'L' },
+  plan:  { appro: 'E', dpm: 'E', suivi: 'L', pesage: 'L', dg: 'L', ci: 'L' },
+  flot:  { appro: 'E', dpm: 'E', trans: 'E', dg: 'L', ci: 'L' },
+  pes:   { pesage: 'E', compta: 'L', dpm: 'L', dg: 'L', ci: 'L' },
+  av:    { appro: 'E', daf: 'V', dg: 'V', caiss: 'E', compta: 'L', ci: 'L' },
+  pay:   { compta: 'V', daf: 'V', caiss: 'E', appro: 'L', dg: 'L', ci: 'L' },
+  agt:   { appro: 'E', dpm: 'E', dg: 'L', ci: 'L', admin: 'L' },
+  aud:   { daf: 'L', dpm: 'L', dg: 'L', ci: 'L', admin: 'L' },
+  param: { admin: 'E', appro: 'E', daf: 'E', dg: 'E' }
+};
+/** Libellés précis des droits (affichés dans la matrice d'audit à la place de E/V/L) */
+const ACC_TXT = {
+  prod: { appro: 'Crée, modifie', dpm: 'Supervise' },
+  tif:  { suivi: 'Valide les étapes' },
+  plan: { appro: 'Programme TIF et livraisons', dpm: 'Programme' },
+  flot: { appro: 'Affecte', dpm: 'Gère la flotte', trans: 'Ses missions' },
+  pes:  { pesage: 'Pèse, édite le ticket' },
+  av:   { appro: 'Demande', daf: 'Valide', dg: 'Vise > seuil', caiss: 'Décaisse' },
+  pay:  { compta: 'Contrôle le ticket', daf: 'Valide', caiss: 'Paie' },
+  agt:  { appro: 'Affecte les zones', dpm: 'Affecte les zones' },
+  param:{ admin: 'Identité', appro: 'Règles métier', daf: 'Règles métier', dg: 'Règles métier' }
+};
+const CAP = { trace: ['suivi'], regles: ['appro', 'daf', 'dg'], brand: ['admin'] };
+
+/* 2.5 Cycle de vie d'une parcelle d'ananas
+   Étapes validées sur le terrain par l'Agt/S-T ; le C/Appro programme le TIF
+   (Traitement d'Induction Florale, ou « hormonage ») et planifie la récolte. */
+const STAGES = [
+  { n: 'À programmer',  tone: 'warn' }, { n: 'TIF programmé', tone: 'info' }, { n: 'Floraison', tone: 'warn' },
+  { n: 'Développement', tone: 'info' }, { n: 'Mûr · à livrer', tone: 'ok' }, { n: 'Livré & pesé', tone: 'ok' }
+];
+/* Circuit d'une avance d'intrants : [rôle qui agit, libellé du bouton] par statut */
+const AV_LAB = ['Demandée', 'Visa DG requis', 'Prête à décaisser', 'Décaissée'];
+const AV_ACT = [['daf', 'Valider'], ['dg', 'Viser'], ['caiss', 'Décaisser']];
+/* Circuit de paiement d'un ticket de pesée */
+const PAY_LAB = ['À contrôler · Comptabilité', 'À valider · Resp. DAF', 'À payer · Caissier', 'Payé'];
+const PAY_ACT = [['compta', 'Contrôler le ticket'], ['daf', 'Valider'], ['caiss', 'Payer']];
+const WHO = { daf: 'Resp. DAF', dg: 'DG / DGA', caiss: 'Caissier', compta: 'Comptabilité' };
+const USINE = [6.665, 2.151];                       // usine Promo Fruits, plateau d'Allada
+const OBJETS_AV = ['Engrais', 'Herbicides', 'Intrants Floraison', 'Rejets / plants', 'Traitement phytosanitaire'];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   3. ÉTAT & DONNÉES DE DÉMONSTRATION
+   S = données métier (persistées dans le navigateur) · U = état de l'interface
+   Toutes les entités sont liées par identifiant (jamais par position dans un
+   tableau) : supprimer un producteur ne décale plus aucune référence.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const STORE = 'pfos.v5';
+let S;
+const U = {
+  role: 'dg', view: 'dash', dp: null, tab: 'id', sheet: null, off: false, qn: 0, menu: false, drv: 1, srch: '', srOpen: false,
+  prodF: { q: '', grp: 'Tous', year: 'Toutes' },
+  tf: { stage: 'all', q: '', grp: 'Tous', sort: 'd', page: 1, zone: 0, sel: new Set() },
+  trace: null
+};
+
+/** Rectangle de w×h mètres dont le coin sud-ouest est (lat, lon) — contour de parcelle fictif. */
+const gRect = (la, ln, w, h) => {
+  const a = h / 111e3, b = w / (111e3 * Math.cos(la * Math.PI / 180));
+  return [[la, ln], [la, ln + b], [la + a, ln + b], [la + a, ln]];
+};
+
+function seed() {
+  const R = rng(20261029), ri = (a, b) => a + Math.floor(R() * (b - a + 1)), TD = today();
+  const annee = TD.getFullYear();
+  const cfg = {
+    prix: 100,        // F par kg de fruit accepté (à confirmer par la Direction)
+    taux: 12.5,       // % de majoration sur les intrants avancés
+    plafond: 30,      // % maximal de la valeur d'une pesée retenu pour rembourser les avances
+    seuil: 500000,    // montant au-delà duquel le visa du DG est requis
+    itr: 175,         // intervalle TIF → récolte, en jours (INRAB : récolte dès le 6ᵉ mois après le TIF)
+    rdt: 45,          // rendement de planification, t/ha (≈ 47 t/ha observés chez les producteurs du Sud-Bénin)
+    capJour: 0,       // camions maximum par jour à l'usine (0 = illimité)
+    nom: 'Promo Fruits Bénin', logo: '', couleurs: { brand: '', gold: '', side: '' }
+  };
+  const zones = [
+    { id: 1, n: 'Allada',        ag: 1, c: [6.665, 2.151] }, { id: 2, n: 'Zè',            ag: 1, c: [6.775, 2.333] },
+    { id: 3, n: 'Tori-Bossito',  ag: 2, c: [6.505, 2.145] }, { id: 4, n: 'Abomey-Calavi', ag: 3, c: [6.449, 2.352] }
+  ];
+  const agents = [{ id: 1, n: 'Agt/S-T 1' }, { id: 2, n: 'Agt/S-T 2' }, { id: 3, n: 'Agt/S-T 3' }];
+  const groupes = ['Coopérative IRA', 'Groupement Allada', 'Groupement Zè', 'Groupement Tori-Bossito', 'Groupement Calavi', 'Producteurs individuels'];
+  const noms = ['MENSAH Kōami', 'ADAGBÈ Biyi', 'HOUNGBO Sena', 'SOSSOU Mawena', 'DOSSOU Koffi', 'BIO Kpassi', 'GBAGUIDI Tanguy', 'KINDIFFO Sèdjro', 'AGOSSA Fèmi', 'SÈGBÈNON Mahougnon', 'AGBO Sèna', 'ADISSA Olouwa', "N'DAH N'Koué", 'BOKO Mahoutin', 'ALLADAGBÉ Tobi', 'CHABI Bio', 'KOTCHANI Oladé', 'SINSIN Fifamè', 'GNONLONFOUN Kèmi', 'HOUNGBÉGNON Codjo'];
+  const has = [18, 12, 15, 6.5, 9, 4.2, 5.8, 5, 14, 9, 11, 7.5, 8, 3.6, 13, 9.5, 10, 6, 7, 12];   // hectares plantés en ananas
+  const sexes = 'MMFFMMMMMMFMMMMMMFFM';
+  const p2 = () => pad(ri(10, 99), 2);
+  const producteurs = noms.map((nom, i) => {
+    const zone = i % 4 + 1, histA = has[i] * cfg.rdt;
+    return { id: i + 1, nom, grp: groupes[i % 6], sexe: sexes[i], tel: `+229 01 ${p2()} ${p2()} ${p2()} ${p2()}`, zone, ha: has[i],
+      hist: { [annee - 2]: { att: Math.round(histA * .7), liv: Math.round(histA * .7 * (.6 + R() * .6)) },
+              [annee - 1]: { att: Math.round(histA * .85), liv: Math.round(histA * .85 * (.7 + R() * .6)) } } };
+  });
+
+  /* Parcelles : répartition volontaire sur tous les stades pour que chaque écran soit démontrable */
+  const cats = 'DDEBDCDFADEDFDCDBDDE'.split(''), parcelles = [], nParc = []; let eN = 0;
+  producteurs.forEach(p => {
+    const n = Math.min(4, Math.max(1, Math.round(p.ha / 4))); nParc.push(n);
+    for (let k = 0; k < n; k++) {
+      const cat = cats[parcelles.length % cats.length], ha = +(p.ha / n).toFixed(2), z = zones[p.zone - 1];
+      const la = z.c[0] + (R() - .5) * .05, lo = z.c[1] + (R() - .5) * .05, side = Math.sqrt(ha * 1e4);
+      const x = { id: parcelles.length + 1, prod: p.id, nom: 'Champ ' + 'ABCDEFGH'[k], ha, gps: [la, lo], pts: [], photo: false, tif: null, pr: null, s: 0, livT: 0, cat };
+      const traced = cat !== 'A';
+      if (traced) { x.pts = gRect(la, lo, side, side); x.photo = true; }
+      if (cat === 'C') { x.s = 1; x.pr = iso(addDays(TD, cfg.itr + ri(-2, 35))); }
+      if (cat === 'D') { const k2 = ri(12, cfg.itr - 30); x.tif = iso(addDays(TD, -k2)); x.s = k2 / cfg.itr < .22 ? 2 : 3; }
+      if (cat === 'E') { x.tif = iso(addDays(TD, (eN++ === 0 ? -2 : ri(0, 4)) - cfg.itr)); x.s = 4; }   // la 1re parcelle mûre est en léger retard
+      if (cat === 'F') { x.tif = iso(addDays(TD, -cfg.itr - ri(12, 50))); x.s = 5; x.livT = +(ha * cfg.rdt * (.9 + R() * .16)).toFixed(1); }
+      parcelles.push(x);
+    }
+  });
+
+  const vehicules = [
+    { id: 1, nom: 'Koffi ADJOVI', type: 'Camion 5 t', im: 'RB 4521 AF', cap: 5 },
+    { id: 2, nom: 'Séraphin HOUNKPATIN', type: 'Camion 15 t', im: 'RB 3318 AD', cap: 15 },
+    { id: 3, nom: 'Clément AGOSSOU', type: 'Tricycle', im: 'RB 7710 AG', cap: 1.2 }
+  ];
+  /* Missions de collecte = un chargement. Un champ de plusieurs hectares donne plusieurs chargements. */
+  const mat = parcelles.filter(x => x.s === 4);
+  if (mat[0]) mat[0].livT = +(mat[0].ha * cfg.rdt * .3).toFixed(1);       // déjà partiellement livrée
+  const missions = [];
+  mat.slice(0, 5).forEach((x, k) => {
+    const v = k % 3 === 2 ? null : vehicules[k % 3 === 0 ? 1 : 0], cap = v ? v.cap : 3;
+    const done = k < 2;
+    missions.push({ id: missions.length + 1, parc: x.id, veh: v ? v.id : null, plaque: v ? '' : 'RB 9022 AH (producteur)',
+      date: iso(done ? TD : addDays(TD, k)), t: Math.min(+(x.ha * cfg.rdt - x.livT).toFixed(1), cap), dv: done ? 1 : 0, done: 0 });
+  });
+  const pid1 = mat[0] ? mat[0].prod : 1;
+  const avances = [
+    { id: 1, prod: 1, objet: 'Engrais', est: 400000, taux: 12.5, st: 0, rb: 0 },
+    { id: 2, prod: 2, objet: 'Herbicides', est: 260000, taux: 15, st: 2, rb: 0 },
+    { id: 3, prod: pid1, objet: 'Intrants Floraison', est: 200000, taux: 12.5, st: 3, rb: 60000 },
+    { id: 4, prod: 4, objet: 'Engrais', est: 700000, taux: 12.5, st: 0, rb: 0 }
+  ].map(a => ({ ...a, m: Math.round(a.est * (1 + a.taux / 100)) }));
+  const fp = parcelles.filter(x => x.s === 5);
+  const pesees = [
+    { id: 'TK-0001', h: '07:15', date: iso(TD), prod: fp[0] ? fp[0].prod : 5, parc: fp[0] ? fp[0].id : 0, veh: 'RB 3318 AD · S. HOUNKPATIN', brut: 8200, tare: 3100, refus: 3, brix: 15.4, net: 4947, prix: 100, ret: 0, ex: 0 },
+    { id: 'TK-0002', h: '07:52', date: iso(TD), prod: fp[1] ? fp[1].prod : 3, parc: fp[1] ? fp[1].id : 0, veh: 'RB 4521 AF · K. ADJOVI', brut: 7300, tare: 3100, refus: 6, brix: 14.8, net: 3948, prix: 100, ret: 0, ex: 0 }
+  ];
+  const paiements = [
+    { tk: 'TK-0001', prod: pesees[0].prod, mt: 494700, st: 3, mode: 'Mobile Money', ref: '+229 01 97 12 34 56' },
+    { tk: 'TK-0002', prod: pesees[1].prod, mt: 394800, st: 0, mode: '', ref: '' }
+  ];
+  return { v: 5, annee, annees: [annee - 2, annee - 1, annee], cfg, zones, agents, groupes, producteurs, parcelles, vehicules, missions, avances, pesees, paiements,
+           journal: [], dl: [], seq: { prod: producteurs.length + 1, parc: parcelles.length + 1, mis: missions.length + 1, av: avances.length + 1, veh: 4, tk: 3 } };
+}
+
+/* Persistance locale : les saisies de la démo survivent à un rechargement de la page */
+const save = () => { try { localStorage.setItem(STORE, JSON.stringify({ S, role: U.role })); } catch (e) { /* stockage indisponible : on continue en mémoire */ } };
+function load() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (raw && raw.S && raw.S.v === 5 && raw.S.annee === new Date().getFullYear()) { S = raw.S; if (ROLES[raw.role]) U.role = raw.role; return; }
+  } catch (e) { /* données illisibles : on repart de la démo */ }
+  S = seed();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   4. RÈGLES MÉTIER
+   ═══════════════════════════════════════════════════════════════════════════ */
+const prod = id => S.producteurs.find(p => p.id === id);
+const parc = id => S.parcelles.find(x => x.id === id);
+const veh = id => S.vehicules.find(v => v.id === id);
+const zoneOf = id => S.zones.find(z => z.id === id);
+const pnom = id => (prod(id) || { nom: '—' }).nom;
+const agentOf = p => { const z = zoneOf(p.zone); return z ? z.ag : 0; };
+const agentNom = id => (S.agents.find(a => a.id === id) || { n: '—' }).n;
+
+/* Droits */
+const lvl = (m, r = U.role) => (ACCESS[m] || {})[r] || '';
+const can = m => lvl(m) === 'E' || lvl(m) === 'V';
+const cap = k => CAP[k].includes(U.role);
+const navFor = r => Object.keys(MODS).filter(m => lvl(m, r));
+
+/* Agronomie : volumes, dates de TIF et de récolte */
+const volP = x => x.ha * S.cfg.rdt;                                     // volume attendu de la parcelle (t)
+const resteP = x => Math.max(0, volP(x) - x.livT);                      // reste à livrer (t)
+const hvD = x => x.tif ? addDays(parse(x.tif), S.cfg.itr) : x.pr ? parse(x.pr) : null;      // date de récolte
+const tifD = x => x.tif ? parse(x.tif) : x.pr ? addDays(parse(x.pr), -S.cfg.itr) : null;   // date de TIF
+const matur = x => x.tif ? Math.min(100, Math.max(0, Math.round(diffDays(today(), parse(x.tif)) / S.cfg.itr * 100))) : 0;
+const traced = x => x.pts.length > 2 && x.photo;
+const missionsOuvertes = pid => S.missions.filter(m => m.parc === pid && !m.done);
+const plannedT = x => missionsOuvertes(x.id).reduce((t, m) => t + m.t, 0);
+const mAt = d => S.missions.filter(m => m.date === d && !m.done);       // missions d'un jour (iso)
+
+/** Totaux producteur pour une campagne ('Toutes' = cumul des années). */
+function yearStats(p, y) {
+  const cur = S.parcelles.filter(x => x.prod === p.id).reduce((a, x) => ({ att: a.att + volP(x), liv: a.liv + x.livT }), { att: 0, liv: 0 });
+  if (y === S.annee) return cur;
+  if (y === 'Toutes') return Object.values(p.hist || {}).reduce((a, h) => ({ att: a.att + h.att, liv: a.liv + h.liv }), cur);
+  return (p.hist || {})[y] || { att: 0, liv: 0 };
+}
+const campagne = () => S.producteurs.reduce((a, p) => { const s = yearStats(p, S.annee); return { att: a.att + s.att, liv: a.liv + s.liv }; }, { att: 0, liv: 0 });
+const groupStats = () => S.groupes.map(g => {
+  const L = S.producteurs.filter(p => p.grp === g), s = L.reduce((a, p) => { const y = yearStats(p, S.annee); return { att: a.att + y.att, liv: a.liv + y.liv }; }, { att: 0, liv: 0 });
+  return { g, n: L.length, ...s };
+}).filter(x => x.n);
+
+/** Récoltes attendues par semaine sur 12 semaines : part déjà couverte par un transport vs à planifier. */
+function weeklyForecast() {
+  const m0 = monday(), W = Array.from({ length: 12 }, (_, i) => ({ d: addDays(m0, i * 7), plan: 0, libre: 0 }));
+  S.parcelles.forEach(x => {
+    const h = hvD(x); if (!h || x.s === 5 || x.s === 0) return;
+    const w = Math.floor(diffDays(h, m0) / 7), rest = resteP(x), pl = Math.min(rest, plannedT(x));
+    if (w >= 0 && w < 12) { W[w].plan += pl; W[w].libre += rest - pl; }
+    else if (w < 0) { W[0].plan += pl; W[0].libre += rest - pl; }     // récoltes en retard : rattachées à la semaine en cours
+  });
+  return W;
+}
+
+/** Remboursement des avances sur une pesée : plafonné à X % de la valeur (paramétrable). */
+function retenue(prodId, valeur) {
+  let plafond = valeur * S.cfg.plafond / 100, total = 0; const det = [];
+  S.avances.filter(a => a.prod === prodId && a.st === 3 && a.m > a.rb).forEach(a => {
+    const t = Math.min(a.m - a.rb, plafond); if (t > 0) { det.push([a, t]); total += t; plafond -= t; }
+  });
+  return { total, det };
+}
+/** Calcul d'une pesée : net = brut − tare, puis refus qualité, valeur, retenue de crédit, net à payer. */
+function calcPesee(f) {
+  const n0 = Math.max(0, f.brut - f.tare), net = Math.round(n0 * (1 - f.refus / 100)), val = net * S.cfg.prix;
+  const r = retenue(f.prod, val);
+  return { n0, net, val, ...r, aPayer: Math.max(0, val - r.total - f.ex) };
+}
+
+/* Alertes opérationnelles (calculées en direct à partir des données) */
+function alerts() {
+  const A = [], TD = today();
+  S.parcelles.forEach(x => {
+    const h = hvD(x); if (!h || x.s === 5 || x.s === 0) return;
+    const dd = diffDays(h, TD), rest = resteP(x);
+    if (dd < 0 && x.s >= 3 && rest > 0.5) A.push({ k: 'err', t: `Retard : ${pnom(x.prod)} · ${x.nom} devait livrer le ${fdate(h)}`, a: 'rel', v: x.id, b: 'Relancer' });
+    else if ((x.s === 4 || (x.s === 3 && dd <= 7)) && plannedT(x) < rest - 0.05) A.push({ k: 'warn', t: `Sans transport : ${pnom(x.prod)} · ${x.nom} livre le ${fdate(h)} (${TN(rest - plannedT(x))} à couvrir)`, a: 'mnew', v: x.id, b: 'Affecter' });
+  });
+  if (S.cfg.capJour) for (let d = 0; d < 28; d++) {
+    const dt = addDays(monday(), d); if (dow(dt) === 6) continue;
+    const n = mAt(iso(dt)).length; if (n > S.cfg.capJour) A.push({ k: 'err', t: `Limite dépassée le ${fdate(dt)} : ${n} camions pour ${S.cfg.capJour} prévus`, a: 'rbal', v: iso(dt), b: 'Reporter' });
+  }
+  S.parcelles.forEach(x => {
+    if (!x.tif && x.pr) { const d = diffDays(tifD(x), TD); if (d <= 7) A.push({ k: 'warn', t: `TIF ${d < 0 ? 'en retard' : 'à réaliser vers le ' + fdate(tifD(x))} : ${pnom(x.prod)} · ${x.nom}` }); }
+  });
+  const n2 = S.paiements.filter(x => x.st === 2).length; if (n2) A.push({ k: 'warn', t: `${n2} paiement(s) producteur à effectuer par le Caissier` });
+  return A;
+}
+
+/* Tâches personnalisées par rôle : alimentent la cloche et le bloc « À faire maintenant » */
+function tasks() {
+  const T = [], r = U.role, TD = today(), add = (i, t, v) => T.push({ i, t, v });
+  const myZone = x => U.tf.zone === 0 || agentOf(prod(x.prod)) === U.tf.zone;
+  if (r === 'suivi') S.parcelles.forEach(x => {
+    if (!myZone(x) || x.s === 5) return;
+    const el = x.tif ? diffDays(TD, parse(x.tif)) : -1, dd = !x.tif && x.pr ? diffDays(tifD(x), TD) : 9e3;
+    if (x.s === 0 && !traced(x)) add('map', `Tracer ${pnom(x.prod)} · ${x.nom} (une seule fois, avant le TIF)`, 'tif');
+    if (x.s === 1 && dd <= 7) add('sprout', `Valider le TIF réalisé : ${pnom(x.prod)} · ${x.nom}`, 'tif');
+    if (x.s === 2 && el >= S.cfg.itr * .22) add('sprout', `Valider le stade Développement : ${pnom(x.prod)} · ${x.nom}`, 'tif');
+    if (x.s === 3 && el >= S.cfg.itr - 7) add('pine', `Valider « Mûr · à livrer » : ${pnom(x.prod)} · ${x.nom}`, 'tif');
+  });
+  if (r === 'appro' || r === 'dpm') {
+    S.parcelles.forEach(x => {
+      if (x.s === 0 && traced(x)) add('calendar', `Programmer le TIF : ${pnom(x.prod)} · ${x.nom} (parcelle tracée)`, 'plan');
+    });
+    alerts().filter(a => a.a === 'mnew' || a.k === 'err').slice(0, 6).forEach(a => add('alert', a.t, 'plan'));
+  }
+  if (r === 'trans') S.missions.forEach(m => { if (m.veh === U.drv && !m.dv && !m.done) add('truck', `Mission : ${pnom(parc(m.parc).prod)} · ${fdate(parse(m.date))} · ${TN(m.t)}`, 'flot'); });
+  if (r === 'pesage') S.missions.forEach(m => { if (m.dv && !m.done) add('scale', `Camion livré à peser : ${pnom(parc(m.parc).prod)} · ${TN(m.t)}`, 'pes'); });
+  S.paiements.forEach(x => { const a = PAY_ACT[x.st]; if (a && a[0] === r) add('wallet', `${a[1]} : ${x.tk} · ${pnom(x.prod)} · ${F(x.mt)}`, 'pay'); });
+  S.avances.forEach(a => { const q = AV_ACT[a.st]; if (q && q[0] === r) add('cash', `${q[1]} l'avance ${a.objet} : ${pnom(a.prod)} · ${F(a.est)}`, 'av'); });
+  return T;
+}
+
+/* Journal d'audit & file d'attente hors-ligne */
+function audit(a) {
+  S.journal.unshift({ h: nowHM(), d: iso(new Date()), who: ROLES[U.role].n, a });
+  if (S.journal.length > 300) S.journal.length = 300;
+  if (U.off) U.qn++;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   5. COMPOSANTS D'INTERFACE
+   ═══════════════════════════════════════════════════════════════════════════ */
+const badge = (t, tone = '') => `<span class="badge ${tone}">${t}</span>`;
+const progress = (p, gold) => `<div class="progress" role="progressbar" aria-valuenow="${Math.round(p)}" aria-valuemin="0" aria-valuemax="100"><i class="${gold ? 'gold' : ''}" style="width:${Math.max(0, Math.min(100, p))}%"></i></div>`;
+const kpi = (lab, val, sub, icon = 'trend', tone = '') => `<div class="kpi"><div class="lab"><span class="ico ${tone}">${ic(icon, 's')}</span>${lab}</div><strong>${val}</strong><small>${sub || ''}</small></div>`;
+const empty = (msg, icon = 'layers') => `<div class="empty">${ic(icon)}<div>${msg}</div></div>`;
+const btn = (label, a, v, cls = '', icon = '') => `<button class="btn ${cls}" data-a="${a}"${v !== undefined ? ` data-v="${esc(v)}"` : ''}>${icon ? ic(icon, 's') : ''}${label}</button>`;
+const opts = (list, sel) => list.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(sel) ? ' selected' : ''}>${esc(l)}</option>`).join('');
+const field = (label, inner, hint) => `<label class="field">${label}${inner}${hint ? `<small>${hint}</small>` : ''}</label>`;
+const head = (title, sub, actions = '') => `<div class="row sp"><div class="head"><h2>${title}</h2>${sub ? `<p class="sm">${sub}</p>` : ''}</div>${actions ? `<div class="row">${actions}</div>` : ''}</div>`;
+const stageBadge = x => badge(STAGES[x.s].n, STAGES[x.s].tone);
+const steps = x => `<div class="steps" title="${STAGES[x.s].n}">${STAGES.map((_, k) => `<i class="${k <= x.s ? 'on' : ''}"></i>`).join('')}</div>`;
+const stepper = (list, goldFrom = 99) => `<div class="stepper">${list.map((t, i) => `<span class="stp ${i >= goldFrom ? 'gold' : ''}"><b>${i + 1}</b>${t}</span>`).join(ic('chev', 's'))}</div>`;
+
+/** Tableau responsive : cartes empilées sur mobile, tableau classique dès 820 px.
+    cols = [{h, m?, r?, x?}]  (m = cellule titre, r = alignée à droite, x = actions) · rows = [{c:[…], a?, v?}] */
+function table(cols, rows, msg) {
+  if (!rows.length) return empty(msg || 'Aucun résultat.');
+  const th = cols.map(c => `<th class="${c.r ? 'r' : ''}">${c.h}</th>`).join('');
+  const tr = rows.map(r => `<tr${r.a ? ` class="click" tabindex="0" data-a="${r.a}" data-v="${esc(r.v)}"` : ''}>${r.c.map((c, i) => { const k = cols[i]; return `<td class="${k.m ? 'm ' : ''}${k.r ? 'r ' : ''}${k.x ? 'x' : ''}" data-l="${esc(k.h)}">${c}</td>`; }).join('')}</tr>`).join('');
+  return `<div class="tw"><table class="t"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div>`;
+}
+const alertRow = a => `<div class="alert ${a.k}"><span class="txt">${esc(a.t)}</span>${a.a && can('plan') ? btn(a.b, a.a, a.v, 'line sm') : ''}</div>`;
+
+/* Graphiques SVG sans bibliothèque : légers, accessibles, thémables */
+function chartWeeks() {
+  const W = weeklyForecast(), mx = Math.max(10, ...W.map(w => w.plan + w.libre)), bw = 22, g = 6, H = 140, base = H - 20, top = 16;
+  const bars = W.map((w, i) => {
+    const x = 6 + i * (bw + g), hp = w.plan / mx * (base - top), hl = w.libre / mx * (base - top), tot = w.plan + w.libre;
+    return `<g><title>Semaine du ${fdate(w.d)} : ${fmt(tot)} t attendues, dont ${fmt(w.plan)} t déjà couvertes par un transport</title>
+      <rect x="${x}" y="${(base - hp).toFixed(1)}" width="${bw}" height="${hp.toFixed(1)}" rx="3" fill="var(--brand)"/>
+      <rect x="${x}" y="${(base - hp - hl).toFixed(1)}" width="${bw}" height="${hl.toFixed(1)}" rx="3" fill="var(--gold)"/>
+      ${tot > 0 ? `<text x="${x + bw / 2}" y="${(base - hp - hl - 4).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="600" fill="var(--ink-2)">${fmt(tot)}</text>` : ''}
+      <text x="${x + bw / 2}" y="${H - 5}" text-anchor="middle" font-size="8.5" fill="var(--ink-3)">${i % 2 === 0 ? fdate(w.d) : ''}</text></g>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${6 + 12 * (bw + g)} ${H}" width="100%" role="img" aria-label="Tonnes de fruits attendues par semaine sur 12 semaines">${bars}</svg>
+    <div class="legend"><span><i style="background:var(--brand)"></i>Transport affecté</span><span><i style="background:var(--gold)"></i>Transport à affecter</span></div>`;
+}
+const pipeline = () => {
+  const n = STAGES.map((_, k) => S.parcelles.filter(x => x.s === k).length), mx = Math.max(1, ...n);
+  return STAGES.map((s, k) => `<div class="rowline"><span class="sm">${s.n}</span>${progress(n[k] / mx * 100, k < 4 && k !== 1)}<b class="num">${n[k]}</b></div>`).join('');
+};
+
+/* Feuilles (modales / tiroir) */
+function sheet(html, o = {}) { U.sheet = { html, wide: !!o.wide }; paintLayer(); }
+function closeSheet() { U.sheet = null; paintLayer(); }
+function paintLayer() {
+  const L = $('#layer');
+  if (U.sheet) { L.innerHTML = `<div class="ov" data-a="ovx"><div class="sheet ${U.sheet.wide ? 'wide' : ''}" role="dialog" aria-modal="true" tabindex="-1">${U.sheet.html}</div></div>`; }
+  else if (U.dp !== null && prod(U.dp)) { L.innerHTML = `<div class="ov drawer" data-a="ovx"><aside class="sheet" role="dialog" aria-modal="true" aria-label="Fiche producteur" tabindex="-1">${drawerHtml()}</aside></div>`; }
+  else { L.innerHTML = ''; return; }
+  const d = $('#layer .sheet'); if (d && !d.contains(document.activeElement)) d.focus({ preventScroll: true });
+}
+const sheetHead = (title, sub) => `<div class="hd"><div class="head"><h2>${title}</h2>${sub ? `<p class="sm">${sub}</p>` : ''}</div><button class="btn ghost icon sm" data-a="mc" aria-label="Fermer">${ic('x')}</button></div>`;
+function toast(msg, err) {
+  const d = document.createElement('div'); d.className = 'toast' + (err ? ' err' : ''); d.innerHTML = `${ic(err ? 'alert' : 'check', 's')}<span>${esc(msg)}</span>`;
+  $('#toasts').append(d); setTimeout(() => d.remove(), 3200);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   6. VUES — une fonction par module
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 6.1 Tableau de bord */
+function vDash() {
+  const c = campagne(), pct = c.att ? Math.round(c.liv / c.att * 100) : 0, A = alerts(), T = tasks();
+  const prets = S.parcelles.filter(x => x.s === 4), vPrets = prets.reduce((t, x) => t + resteP(x), 0), m0 = monday();
+  const camSem = S.missions.filter(m => !m.done && diffDays(parse(m.date), m0) >= 0 && diffDays(parse(m.date), m0) < 7);
+  const avOn = S.avances.filter(a => a.st === 3).reduce((t, a) => t + a.m - a.rb, 0), payE = S.paiements.filter(x => x.st < 3);
+  const ha = S.parcelles.reduce((t, x) => t + x.ha, 0);
+  return `<section class="hero"><div><div class="xs b" style="opacity:.85;letter-spacing:.08em;text-transform:uppercase">Campagne ${S.annee} · Approvisionnement en fruits</div>
+      <div class="big">${fmt(c.liv)} t</div><p>livrées à l'usine sur ${fmt(c.att)} t attendues · ${pct} % de la campagne</p></div>
+      ${progress(pct, pct < 85)}
+      <div class="row sm"><span>${ic('sprout', 's')} ${prets.length} parcelle(s) prête(s) à récolter · ${TN(vPrets)}</span><span>${ic('truck', 's')} ${camSem.length} camion(s) cette semaine</span></div></section>
+    <div class="grid g-kpi">
+      ${kpi('Producteurs', S.producteurs.length, `${S.parcelles.length} parcelles · ${fmt(ha)} ha`, 'users')}
+      ${kpi('Récolte à venir', TN(S.parcelles.filter(x => x.s >= 1 && x.s < 5).reduce((t, x) => t + resteP(x), 0)), 'sur les 6 prochains mois', 'sprout', 'gold')}
+      ${kpi('Avances à recouvrer', F(avOn), 'remboursées à chaque pesée', 'cash', 'blue')}
+      ${kpi('Paiements en cours', F(payE.reduce((t, x) => t + x.mt, 0)), `${payE.length} ticket(s) à régler`, 'wallet', payE.length ? 'red' : '')}
+    </div>
+    <div class="grid g-2"><div class="stack">
+      <div class="card"><h3>À faire maintenant</h3>${T.length ? T.slice(0, 5).map(t => `<button class="todo" data-a="go" data-v="${t.v}"><span class="ico">${ic(t.i, 's')}</span><span class="grow sm">${esc(t.t)}</span>${ic('chev', 's')}</button>`).join('') + (T.length > 5 ? `<button class="btn line sm" data-a="notif">Voir les ${T.length} tâches</button>` : '') : empty('Rien d\'urgent pour votre profil. Bon travail.', 'check')}</div>
+      <div class="card"><h3>Récoltes attendues · 12 prochaines semaines (t)</h3>${chartWeeks()}</div></div>
+      <div class="stack">
+        <div class="card"><h3>Alertes</h3>${A.length ? A.slice(0, 6).map(alertRow).join('') : empty('Aucune alerte : le planning est équilibré.', 'check')}</div>
+        <div class="card"><h3>Livraison par groupement</h3>${groupStats().map(g => { const r = g.att ? g.liv / g.att * 100 : 0; return `<div class="rowline"><span class="sm"><b>${esc(g.g.replace('Groupement ', 'Gpt '))}</b></span>${progress(r, r < 85)}<span class="num sm">${Math.round(r)} %</span></div>`; }).join('')}</div>
+        <div class="card"><h3>Pipeline des parcelles</h3>${pipeline()}</div></div></div>`;
+}
+
+/* 6.2 Producteurs */
+const prodRows = () => {
+  const y = U.prodF.year === 'Toutes' ? 'Toutes' : +U.prodF.year, q = U.prodF.q.toLowerCase();
+  return S.producteurs.filter(p => (U.prodF.grp === 'Tous' || p.grp === U.prodF.grp) && p.nom.toLowerCase().includes(q))
+    .map(p => { const s = yearStats(p, y); return { p, s, done: y !== S.annee && y !== 'Toutes', t: s.att ? Math.round(s.liv / s.att * 100) : 0, np: S.parcelles.filter(x => x.prod === p.id).length, ha: S.parcelles.filter(x => x.prod === p.id).reduce((t, x) => t + x.ha, 0) }; });
+};
+function vProd() {
+  const rows = prodRows(), ed = can('prod');
+  return `${head('Annuaire des producteurs', 'Un producteur = une fiche unique, ses parcelles, ses avances et ses livraisons. Le contrôle de doublon évite les doubles paiements.')}
+    <div class="card stack"><div class="filters">
+      <div class="search wide">${ic('search', 's')}<input id="pq" type="search" placeholder="Rechercher un producteur" value="${esc(U.prodF.q)}" data-inp="pq" aria-label="Rechercher un producteur"></div>
+      <select data-chg="pf" aria-label="Groupement">${opts([['Tous', 'Tous les groupements'], ...S.groupes.map(g => [g, g])], U.prodF.grp)}</select>
+      <select data-chg="py" aria-label="Campagne">${opts([['Toutes', 'Toutes les campagnes'], ...S.annees.map(y => [y, 'Campagne ' + y])], U.prodF.year)}</select>
+      ${btn('Excel', 'xp', undefined, 'line', 'download')}${ed ? btn('Campagne', 'ynew', undefined, 'line', 'plus') + btn('Nouveau producteur', 'pnew', undefined, '', 'plus') : ''}</div>
+    ${table([{ h: 'Producteur', m: 1 }, { h: 'Groupement' }, { h: 'Zone' }, { h: 'Contact' }, { h: 'Parcelles', r: 1 }, { h: 'Superficie', r: 1 }, { h: 'Attendu', r: 1 }, { h: 'Livré', r: 1 }, { h: 'Taux', r: 1 }, { h: '', x: 1 }],
+      rows.map(r => ({ a: 'open', v: r.p.id, c: [`<b>${esc(r.p.nom)}</b>`, badge(esc(r.p.grp)), esc(zoneOf(r.p.zone).n), esc(r.p.tel), r.np, fmt1(r.ha) + ' ha', TN(r.s.att), TN(r.s.liv), badge(r.t + ' %', !r.done ? '' : r.t < 80 ? 'err' : r.t <= 120 ? 'ok' : 'info'), ed ? `<span class="row" style="justify-content:flex-end"><button class="btn line sm icon" data-a="pedit" data-v="${r.p.id}" aria-label="Modifier ${esc(r.p.nom)}">${ic('edit', 's')}</button><button class="btn danger sm icon" data-a="pdel" data-v="${r.p.id}" aria-label="Supprimer ${esc(r.p.nom)}">${ic('trash', 's')}</button></span>` : ''] })),
+      'Aucun producteur ne correspond à ces filtres.')}
+    <div class="legend"><span>${badge('< 80 %', 'err')} sous-livraison</span><span>${badge('80–120 %', 'ok')} conforme</span><span>${badge('> 120 %', 'info')} sur-livraison</span><span class="mute">Seuils appliqués aux campagnes terminées · touchez une ligne pour ouvrir la fiche.</span></div></div>`;
+}
+
+/* 6.3 Parcelles & workflow TIF */
+function nextAct(x) {
+  if (x.s === 0) return !traced(x) ? (cap('trace') ? ['Tracer & photo', 'ptr'] : null) : (can('plan') ? ['Programmer le TIF', 'tprog'] : null);
+  if (x.s >= 1 && x.s <= 3) return lvl('tif') === 'V' ? [['', 'Valider le TIF réalisé', 'Valider : Développement', 'Valider : Mûr · à livrer'][x.s], 'tadv'] : null;
+  if (x.s === 4 && resteP(x) > plannedT(x) + .05) return can('plan') ? ['Affecter un transport', 'mnew'] : null;
+  return null;
+}
+const tfBase = () => S.parcelles.filter(x => { const p = prod(x.prod); return (U.role !== 'suivi' || U.tf.zone === 0 || agentOf(p) === U.tf.zone) && (U.tf.grp === 'Tous' || p.grp === U.tf.grp) && (!U.tf.q || p.nom.toLowerCase().includes(U.tf.q.toLowerCase())); });
+const tfList = () => tfBase().filter(x => U.tf.stage === 'all' || x.s === +U.tf.stage).sort((a, b) => U.tf.sort === 'm' ? matur(b) - matur(a) : U.tf.sort === 'n' ? pnom(a.prod).localeCompare(pnom(b.prod)) : ((hvD(a) || 1e15) - (hvD(b) || 1e15)));
+const TF_PAGE = 12;
+function vTif() {
+  const B = tfBase(), L = tfList(), pg = Math.max(1, Math.ceil(L.length / TF_PAGE)); if (U.tf.page > pg) U.tf.page = pg;
+  const V = L.slice((U.tf.page - 1) * TF_PAGE, U.tf.page * TF_PAGE), e = lvl('tif') === 'V', TD = today();
+  const sel = [...U.tf.sel].filter(id => parc(id)), chips = [['all', 'Toutes', B.length], ...STAGES.map((s, k) => [String(k), s.n, B.filter(x => x.s === k).length])];
+  return `${head('Parcelles & workflow TIF', e ? 'Chaque étape validée sur le terrain fait avancer la parcelle. Sélectionnez plusieurs lignes pour valider en lot.' : `Pipeline en lecture seule : l'Agt/S-T valide les étapes, le C/Appro programme. Récolte prévue = TIF + ${S.cfg.itr} jours.`)}
+    <div class="chips" role="tablist">${chips.map(([k, n, c]) => `<button class="chip ${U.tf.stage === k ? 'on' : ''}" data-a="tfs" data-v="${k}">${n} <em>${c}</em></button>`).join('')}</div>
+    <div class="card stack"><div class="filters">
+      <div class="search wide">${ic('search', 's')}<input id="tq" type="search" placeholder="Rechercher un producteur" value="${esc(U.tf.q)}" data-inp="tq" aria-label="Rechercher un producteur"></div>
+      <select data-chg="tg" aria-label="Groupement">${opts([['Tous', 'Tous les groupements'], ...S.groupes.map(g => [g, g])], U.tf.grp)}</select>
+      <select data-chg="to" aria-label="Tri">${opts([['d', 'Récolte la plus proche'], ['m', 'Maturité décroissante'], ['n', 'Producteur A–Z']], U.tf.sort)}</select>
+      ${U.role === 'suivi' ? `<select data-chg="tz" aria-label="Portefeuille">${opts([...S.agents.map(a => [a.id, a.n]), [0, 'Toutes les zones']], U.tf.zone)}</select>` : ''}</div>
+    ${e && sel.length ? `<div class="alert ok"><span class="txt"><b>${sel.length}</b> parcelle(s) sélectionnée(s)</span><span class="row">${btn('Valider l\'étape suivante', 'tfadv', undefined, 'sm')}${btn('Vider', 'tfclr', undefined, 'line sm')}</span></div>` : ''}
+    ${table([...(e ? [{ h: `<input type="checkbox" data-a="tsall" aria-label="Tout sélectionner">` }] : []), { h: 'Producteur', m: 1 }, { h: 'Parcelle' }, { h: 'Étape' }, { h: 'TIF' }, { h: 'Maturité' }, { h: 'Récolte prévue' }, { h: '', x: 1 }],
+      V.map(x => {
+        const h = hvD(x), dd = h ? diffDays(h, TD) : null, a = nextAct(x), p = prod(x.prod);
+        return { c: [...(e ? [`<input type="checkbox" data-a="tsel" data-v="${x.id}" ${U.tf.sel.has(x.id) ? 'checked' : ''} aria-label="Sélectionner ${esc(p.nom)} ${esc(x.nom)}">`] : []),
+          `<b>${esc(p.nom)}</b><div class="sm mute">${esc(p.grp)}</div>`, `${esc(x.nom)} · ${x.ha} ha`, stageBadge(x) + steps(x),
+          x.tif ? fdate(tifD(x)) : x.pr ? `<span class="mute">prévu ${fdate(tifD(x))}</span>` : '—',
+          x.tif ? `<div style="min-width:110px">${progress(matur(x), matur(x) >= 100)}<div class="xs mute">${matur(x)} %</div></div>` : '—',
+          h && x.s < 5 ? `${fdate(h)}<div class="xs ${dd < 0 ? 'err' : dd <= 7 ? 'warn' : 'mute'}">${dd < 0 ? 'retard de ' + (-dd) + ' j' : dd === 0 ? "aujourd'hui" : 'dans ' + dd + ' j'}</div>` : '—',
+          a ? btn(a[0], a[1], x.id, 'sm') : ''] };
+      }), 'Aucune parcelle pour ces filtres.')}
+    <div class="row sp"><span class="sm mute">${L.length ? `${(U.tf.page - 1) * TF_PAGE + 1}–${Math.min(L.length, U.tf.page * TF_PAGE)} sur ${L.length}` : '0 résultat'}</span>
+      <span class="row">${btn('‹', 'tpg', -1, 'line sm')}<span class="sm">Page ${U.tf.page}/${pg}</span>${btn('›', 'tpg', 1, 'line sm')}</span></div></div>`;
+}
+/** Carte d'une parcelle (fiche producteur) */
+function pcard(x) {
+  const h = hvD(x), tr = traced(x), a = nextAct(x), ed = can('prod') && x.s < 5;
+  return `<div class="card flat stack" style="gap:8px"><div class="row sp"><b>${esc(x.nom)} · ${x.ha} ha</b>${stageBadge(x)}</div>
+    <div class="sm mute">${tr ? 'Mesurée par GPS' : 'Déclarée · traçage requis avant le TIF'}${tr ? ` · ${x.gps[0].toFixed(4)}, ${x.gps[1].toFixed(4)}` : ''}</div>${steps(x)}${x.tif ? progress(matur(x), matur(x) >= 100) : ''}
+    <div class="sm">${x.tif ? `TIF le ${fdate(tifD(x))} · maturité ${matur(x)} % · récolte prévue ${fdate(h)}` : x.pr ? `Récolte visée ${fdate(h)} · TIF vers le ${fdate(tifD(x))}` : 'TIF non programmé'}</div>
+    <div class="sm mute">Volume attendu ${TN(volP(x))} · livré ${TN(x.livT)}</div>
+    <div class="row">${a ? btn(a[0], a[1], x.id, 'sm') : ''}${ed ? btn('Modifier', 'pcedit', x.id, 'line sm') + btn('Supprimer', 'pcdel', x.id, 'danger sm') : ''}</div></div>`;
+}
+
+/* 6.4 Planning des livraisons à l'usine */
+function vPlan() {
+  const m0 = monday(), A = alerts(), TD = today(), cj = S.cfg.capJour;
+  const sem = S.missions.filter(m => !m.done && diffDays(parse(m.date), m0) >= 0 && diffDays(parse(m.date), m0) < 7);
+  const pic = Math.max(0, ...Array.from({ length: 28 }, (_, d) => mAt(iso(addDays(m0, d))).length));
+  const E = []; S.parcelles.forEach(x => { const h = hvD(x); if (!h || x.s === 5) return; E.push({ k: 'R', d: h, x }); if (!x.tif) E.push({ k: 'T', d: tifD(x), x }); });
+  const wo = d => Math.floor(diffDays(d, m0) / 7);
+  const cal = `<div class="cal">${['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'].map(d => `<div class="dh">${d}</div>`).join('')}${[0, 1, 2, 3].map(w => [0, 1, 2, 3, 4, 5].map(d => {
+    const dt = addDays(m0, w * 7 + d), L = mAt(iso(dt)), n = L.length, t = L.reduce((s, m) => s + m.t, 0);
+    return `<button class="${cj && n > cj ? 'x' : cj && n > 0 && n >= cj - 1 ? 't' : n ? 'f' : ''} ${+dt === +TD ? 'today' : ''}" data-a="mslot" data-v="${iso(dt)}" aria-label="${fdateL(dt)} : ${n} camion(s)"><span>${fdate(dt)}</span><b>${n}</b><span>${n ? fmt(t) + ' t' : '·'}</span></button>`;
+  }).join('')).join('')}</div>`;
+  const weeks = Array.from({ length: 12 }, (_, w) => {
+    const ws = addDays(m0, w * 7), R2 = E.filter(e => e.k === 'R' && Math.max(0, wo(e.d)) === w), T2 = E.filter(e => e.k === 'T' && wo(e.d) === w), tv = R2.reduce((s, e) => s + resteP(e.x), 0);
+    const al = R2.length && w === 0 ? badge('À livrer cette semaine · ' + fmt(tv) + ' t', 'err') : R2.length && w === 1 ? badge('Préparer le transport · ' + fmt(tv) + ' t', 'warn') : tv > 250 ? badge('Charge élevée : lisser', 'warn') : T2.length ? badge('TIF à notifier') : '';
+    return { c: [`<b>Sem. ${w + 1}</b><div class="sm mute">${fdate(ws)} – ${fdate(addDays(ws, 6))}</div>`,
+      T2.map(e => `${esc(pnom(e.x.prod))} · ${esc(e.x.nom)} <span class="mute">(${fdate(e.d)})</span>`).join('<br>') || '—',
+      R2.map(e => { const pl = plannedT(e.x), rest = resteP(e.x); return `<div style="margin-bottom:4px"><b>${esc(pnom(e.x.prod))}</b> · ${esc(e.x.nom)} · ${TN(rest)} · <b>${fdate(e.d)}</b> ${pl >= rest - .05 ? badge('Transport affecté', 'ok') : can('plan') && e.x.s >= 3 ? btn('Affecter', 'mnew', e.x.id, 'line sm') : badge('Pas encore mûre')}</div>`; }).join('') || '—', al] };
+  });
+  const toProg = S.parcelles.filter(x => !x.tif && x.s < 5);
+  return `${head('Planning des livraisons à l\'usine', `Récolte = TIF + ${S.cfg.itr} jours. Volume = superficie × ${S.cfg.rdt} t/ha. Un champ de plusieurs hectares donne plusieurs chargements.`)}
+    <div class="grid g-kpi">${kpi('Camions cette semaine', sem.length, TN(sem.reduce((t, m) => t + m.t, 0)) + ' attendues', 'truck')}
+      ${kpi('Retards', A.filter(a => a.t.startsWith('Retard')).length, 'à relancer', 'clock', 'red')}${kpi('Sans transport', A.filter(a => a.t.startsWith('Sans')).length, 'à affecter', 'alert', 'gold')}
+      ${kpi('Jour le plus chargé', pic + ' camion(s)', cj ? 'limite : ' + cj + ' par jour' : 'pas de limite', 'calendar', 'blue')}</div>
+    <div class="grid g-2e"><div class="card"><h3>Camions par jour à l'usine</h3><div class="row sm">Limite actuelle : <b>${cj || 'illimitée'}</b></div>
+      ${can('plan') ? `<div class="row" style="margin-top:10px"><input id="cp" type="number" min="1" inputmode="numeric" placeholder="Illimité" value="${cj || ''}" style="width:130px" aria-label="Camions maximum par jour">${btn('Appliquer', 'cpset', 1, 'sm')}${btn('Illimité', 'cpset', 0, 'line sm')}</div>` : ''}
+      <p class="sm mute" style="margin-top:8px">Sans limite, aucune alerte de saturation n'est émise.</p></div>
+      <div class="card"><h3>Alertes</h3>${A.length ? A.slice(0, 6).map(alertRow).join('') : empty('Aucune alerte : le planning est équilibré.', 'check')}</div></div>
+    <div class="card"><h3>Camions attendus au pont-bascule · 4 semaines</h3>${cal}<div class="legend" style="margin-top:10px"><span><i style="background:var(--ok-soft)"></i>Normal</span><span><i style="background:var(--warn-soft)"></i>Proche de la limite</span><span><i style="background:var(--err-soft)"></i>Limite dépassée</span></div></div>
+    <div class="card stack"><h3>Qui livre, quand, combien · 12 semaines</h3>${table([{ h: 'Semaine', m: 1 }, { h: 'TIF à notifier' }, { h: 'Livraisons attendues' }, { h: 'Alerte' }], weeks)}</div>
+    ${can('plan') ? `<div class="card stack"><h3>Programmer le TIF (parcelles sans TIF)</h3>${table([{ h: 'Producteur', m: 1 }, { h: 'Parcelle' }, { h: 'Récolte visée' }, { h: 'TIF prévu' }, { h: '', x: 1 }],
+      toProg.map(x => ({ c: [`<b>${esc(pnom(x.prod))}</b>`, `${esc(x.nom)} · ${x.ha} ha`, traced(x) ? `<input type="date" id="pd${x.id}" value="${x.pr || ''}" min="${iso(TD)}" aria-label="Récolte visée ${esc(x.nom)}">` : badge('À tracer d\'abord', 'warn'), x.pr ? fdate(tifD(x)) : '—', traced(x) ? btn('Programmer', 'ppr', x.id, 'sm') : ''] })), 'Toutes les parcelles ont un TIF.')}</div>` : ''}`;
+}
+
+/* 6.5 Flotte & missions de collecte */
+function mapSvg(x) {
+  const ptsX = traced(x) ? x.pts : gRect(x.gps[0], x.gps[1], 80, 80), cx = ptsX.reduce((s, p) => s + p[0], 0) / ptsX.length, cy = ptsX.reduce((s, p) => s + p[1], 0) / ptsX.length;
+  const rt = [USINE, [USINE[0] + (cx - USINE[0]) * .35 + .004, USINE[1] + (cy - USINE[1]) * .35 - .006], [USINE[0] + (cx - USINE[0]) * .7 - .003, USINE[1] + (cy - USINE[1]) * .7 + .004], [cx, cy]];
+  const all = [...ptsX, ...rt], la = all.map(a => a[0]), ln = all.map(a => a[1]), a0 = Math.min(...la), o0 = Math.min(...ln), k = Math.cos(a0 * Math.PI / 180);
+  const s = Math.min(280 / ((Math.max(...ln) - o0) * k || 1), 170 / ((Math.max(...la) - a0) || 1)), Q = ([a, o]) => `${(20 + (o - o0) * k * s).toFixed(1)},${(200 - (a - a0) * s).toFixed(1)}`, L = a => a.map(Q).join(' '), u = Q(USINE).split(',');
+  return `<svg class="map" viewBox="0 0 320 220" role="img" aria-label="Itinéraire de l'usine à la parcelle"><polyline points="${L(rt.slice(0, 3))}" fill="none" stroke="var(--brand)" stroke-width="3" stroke-linecap="round"/><polyline points="${L(rt.slice(2))}" fill="none" stroke="var(--err)" stroke-width="3" stroke-dasharray="5 4"/><polygon points="${L(ptsX)}" fill="var(--gold)" fill-opacity=".45" stroke="var(--warn)" stroke-width="2"/><circle cx="${u[0]}" cy="${u[1]}" r="6" fill="var(--brand)"/><text x="${+u[0] + 10}" y="${+u[1] + 4}" font-size="11" fill="currentColor">Usine</text></svg>`;
+}
+const distKm = (a, b) => { const r = Math.PI / 180; return Math.hypot((b[1] - a[1]) * r * Math.cos((a[0] + b[0]) * r / 2), (b[0] - a[0]) * r) * 6371; };
+function mcard(m) {
+  const x = parc(m.parc), ok = S.dl.includes(m.id), lock = U.off && !ok, v = m.veh ? veh(m.veh) : null, isT = U.role === 'trans';
+  const dkm = distKm(USINE, x.gps);
+  return `<div class="card stack" style="gap:8px;${lock ? 'opacity:.6' : ''}"><div class="row sp"><b>${esc(pnom(x.prod))} · ${esc(x.nom)}</b><span class="row">${m.done ? badge('Pesée effectuée', 'ok') : m.dv ? badge('Livrée · à peser', 'warn') : badge('À collecter', 'info')}${ok ? badge('Hors-ligne ✓', 'ok') : ''}</span></div>
+    <div class="sm">${badge(v ? 'Interne · ' + esc(v.im) : 'Producteur · ' + esc(m.plaque || 'véhicule propre'), v ? '' : 'warn')} <span class="mute">Collecte le ${fdate(parse(m.date))} · ${TN(m.t)} · ${dkm.toFixed(0)} km de l'usine</span></div>
+    ${lock ? '<div class="sm err">Feuille de route non téléchargée : indisponible hors-ligne.</div>' : ''}
+    <div class="row">${!ok && (isT || can('plan')) ? btn('Télécharger', 'mdl', m.id, 'line sm', 'download') : ''}${isT && !m.dv && !m.done ? btn('Valider la livraison', 'mval', m.id, 'sm', 'check') : ''}<button class="btn sm soft" data-a="mrt" data-v="${m.id}" ${lock ? 'disabled' : ''}>${ic('map', 's')}Itinéraire</button></div></div>`;
+}
+function vFlot() {
+  const t = U.role === 'trans', L = S.missions.filter(m => !t || m.veh === U.drv);
+  return `${head(t ? 'Mes missions de collecte' : 'Flotte & logistique de collecte', t ? 'Téléchargez vos feuilles de route avant de partir au village : elles restent disponibles sans réseau.' : 'Véhicules internes et missions affectées depuis le planning.')}
+    ${t ? `<div class="card stack">${field('Conducteur', `<select data-chg="drv">${opts(S.vehicules.map(v => [v.id, `${v.nom} · ${v.im}`]), U.drv)}</select>`)}
+      <div class="alert ${U.off ? 'err' : ''}"><span class="txt">${U.off ? 'Zone blanche : seules les missions téléchargées sont utilisables.' : 'En ligne : pensez à télécharger vos missions.'}</span></div></div>`
+    : `<div class="card stack"><div class="row sp"><h3>Transporteurs & véhicules</h3>${can('plan') ? btn('Véhicule', 'fnew', undefined, 'sm', 'plus') : ''}</div>
+      ${table([{ h: 'Transporteur', m: 1 }, { h: 'Type' }, { h: 'Immatriculation' }, { h: 'Capacité', r: 1 }, { h: 'Statut' }, { h: '', x: 1 }], S.vehicules.map(v => ({ c: [`<b>${esc(v.nom)}</b>`, esc(v.type), esc(v.im), v.cap + ' t', badge('Interne', 'ok'), can('plan') ? btn('Retirer', 'fdel', v.id, 'line sm') : ''] })))}</div>`}
+    <div class="stack">${L.map(mcard).join('') || `<div class="card">${empty('Aucune mission. Affectez un transport depuis le planning.', 'truck')}</div>`}</div>`;
+}
+
+/* 6.6 Pont-bascule */
+const pesDefaults = m => ({ tare: 3100, brut: Math.round(3100 + (m ? m.t : 5) * 1000) });
+function vPes() {
+  const Lq = S.missions.filter(m => m.dv && !m.done), d = pesDefaults(Lq[0]), e = can('pes');
+  return `${head('Pont-bascule · pesage & tickets', `Net = brut − tare, puis refus qualité. Prix appliqué : ${F(S.cfg.prix)}/kg (fixé par la Direction). Cible Brix avant récolte : 15–18 °Bx.`)}
+    ${e ? (Lq.length ? `<div class="card stack"><h3>Nouvelle pesée</h3><div class="form2">
+      ${field('Camion livré, en attente de pesée', `<select id="pm" data-chg="pmsel">${opts(Lq.map(m => [m.id, `${pnom(parc(m.parc).prod)} · ${parc(m.parc).nom} · ${m.veh ? veh(m.veh).im : m.plaque}`]), Lq[0].id)}</select>`, 'Le chauffeur doit d\'abord valider sa livraison.')}
+      ${field('Poids brut, véhicule chargé (kg)', `<input id="pk" type="number" inputmode="numeric" min="0" value="${d.brut}" data-inp="pcalc">`)}
+      ${field('Poids à vide, tare (kg)', `<input id="pt" type="number" inputmode="numeric" min="0" value="${d.tare}" data-inp="pcalc">`)}
+      ${field('Fruits refusés (%)', `<input id="pr" type="number" inputmode="decimal" min="0" max="100" step="0.5" value="4" data-inp="pcalc">`, 'Pourris, sous-calibre, brûlés par le soleil')}
+      ${field('Degré Brix mesuré (°Bx)', `<input id="pb" type="number" inputmode="decimal" min="0" max="30" step="0.1" value="15.5" data-inp="pcalc">`, 'Contrôle qualité (optionnel)')}
+      ${field('Autres retenues (F)', `<input id="px" type="number" inputmode="numeric" min="0" value="0" data-inp="pcalc">`)}
+      <label class="field full" style="grid-template-columns:auto 1fr;align-items:center;gap:10px"><input id="pl" type="checkbox"><span>Dernier chargement de cette parcelle (clôture la récolte)</span></label></div>
+      <div class="calc" id="pcalc" aria-live="polite"></div>${btn('Valider la pesée et éditer le ticket', 'psave', undefined, 'block', 'file')}</div>`
+      : `<div class="alert"><span class="txt">Aucun camion en attente de pesée : le chauffeur doit d'abord valider sa livraison.</span></div>`) : '<div class="alert"><span class="txt">Saisie réservée à l\'Agt/Pesage. Vous consultez l\'historique en lecture seule.</span></div>'}
+    <div class="card stack"><h3>Tickets du jour et historique</h3>${table([{ h: 'Ticket', m: 1 }, { h: 'Producteur' }, { h: 'Brut', r: 1 }, { h: 'Tare', r: 1 }, { h: 'Net accepté', r: 1 }, { h: 'Refus', r: 1 }, { h: 'Retenues', r: 1 }, { h: '', x: 1 }],
+      S.pesees.map(w => ({ c: [`<b>${w.id}</b> <span class="sm mute">${w.h}</span>`, `<b>${esc(pnom(w.prod))}</b>`, fmt(w.brut) + ' kg', fmt(w.tare) + ' kg', fmt(w.net) + ' kg', w.refus + ' %', F((w.ret || 0) + (w.ex || 0)), btn('Ticket', 'tkt', w.id, 'line sm', 'file')] })), 'Aucune pesée enregistrée.')}</div>`;
+}
+/** Lecture du formulaire de pesée (utilisé par l'aperçu en direct et par l'enregistrement) */
+function pesForm() {
+  const m = S.missions.find(z => z.id === +$('#pm').value), v = id => +$(id).value || 0;
+  return { m, prod: m ? parc(m.parc).prod : 0, brut: v('#pk'), tare: v('#pt'), refus: v('#pr'), brix: v('#pb'), ex: v('#px'), last: $('#pl').checked };
+}
+function pesPreview() {
+  const box = $('#pcalc'); if (!box) return;
+  const f = pesForm(), c = calcPesee(f), bx = f.brix ? (f.brix >= 15 ? badge('Brix conforme', 'ok') : f.brix >= 12 ? badge('Brix à surveiller', 'warn') : badge('Brix faible', 'err')) : '';
+  box.innerHTML = `<div class="xs b mute">POIDS NET (BRUT − TARE) ${bx}</div><div class="big num">${fmt(c.n0)} kg</div>
+    <div class="sm">Après refus : <b>${fmt(c.net)} kg</b> · valeur : <b>${F(c.val)}</b></div>
+    <div class="sm">Remboursement crédit : <b>${c.total ? F(c.total) : 'aucun'}</b>${c.total ? ` <span class="mute">(plafond ${S.cfg.plafond} % de la valeur)</span>` : ''}</div>
+    <div class="sm">Net à payer au producteur : <b>${F(c.aPayer)}</b></div>`;
+}
+
+/* 6.7 Avances & crédits d'intrants */
+const avLabel = a => a.st === 3 ? (a.rb >= a.m ? 'Soldée' : a.rb > 0 ? 'En apurement' : 'Décaissée') : AV_LAB[a.st];
+function vAv() {
+  const rows = S.avances.map(a => {
+    const ac = AV_ACT[a.st], mine = ac && ac[0] === U.role, pc = Math.round(a.rb / a.m * 100);
+    return { c: [`<b>${esc(pnom(a.prod))}</b><div class="sm mute">${esc(prod(a.prod).grp)}</div>`, `${esc(a.objet)}${a.est > S.cfg.seuil ? '<div class="xs warn">Au-dessus du seuil DG</div>' : ''}`, F(a.est), a.taux + ' %', F(a.m), badge(avLabel(a), a.st === 3 ? 'ok' : a.st === 0 ? 'warn' : 'info'), `<div style="min-width:110px">${progress(pc)}<div class="xs mute">${pc} % remboursé</div></div>`,
+      mine ? btn(ac[1], 'av', a.id, 'sm') : `<span class="sm mute">${ac ? 'attend : ' + WHO[ac[0]] : 'apurement auto'}</span>`] };
+  });
+  return `${head('Avances & crédits d\'intrants', 'Aucun décaissement sans validation du DAF, et du DG au-dessus du seuil. Le remboursement est prélevé à chaque pesée.', U.role === 'appro' ? btn('Nouvelle demande', 'anew', undefined, '', 'plus') : '')}
+    <div class="grid g-kpi">${kpi('À valider', S.avances.filter(a => a.st === 0).length, 'Responsable DAF', 'clock', 'gold')}${kpi('À viser ou décaisser', S.avances.filter(a => a.st === 1 || a.st === 2).length, 'DG puis Caissier', 'cash', 'blue')}
+      ${kpi('Solde à recouvrer', F(S.avances.filter(a => a.st === 3).reduce((t, a) => t + a.m - a.rb, 0)), 'déduit à chaque pesée', 'trend')}${kpi('Seuil de visa DG', F(S.cfg.seuil), 'par avance', 'shield', 'red')}</div>
+    <div class="card stack">${table([{ h: 'Producteur', m: 1 }, { h: 'Objet' }, { h: 'Intrants', r: 1 }, { h: 'Taux', r: 1 }, { h: 'À rembourser', r: 1 }, { h: 'Statut' }, { h: 'Remboursé' }, { h: '', x: 1 }], rows)}</div>
+    <div class="card stack"><h3>Circuit de validation</h3>${stepper(['Demande · C/Appro', 'Validation · Resp. DAF', `Visa DG si > ${F(S.cfg.seuil)}`, 'Décaissement · Caissier', 'Remboursement à chaque pesée'], 4)}
+      <p class="sm mute">Changez de profil en haut de page pour jouer chaque étape.</p></div>`;
+}
+
+/* 6.8 Paiement des producteurs */
+function vPay() {
+  const rows = S.paiements.map(x => {
+    const a = PAY_ACT[x.st], mine = a && a[0] === U.role;
+    return { c: [`<b>${x.tk}</b>`, `<b>${esc(pnom(x.prod))}</b><div class="sm mute">${esc(prod(x.prod).grp)}</div>`, F(x.mt), badge(PAY_LAB[x.st], x.st === 3 ? 'ok' : x.st === 0 ? 'warn' : 'info') + (x.mode ? `<div class="xs mute">${esc(x.mode)}${x.ref ? ' · ' + esc(x.ref) : ''}</div>` : ''),
+      mine ? btn(a[1], 'yact', x.tk, 'sm') : x.st === 3 ? btn('Reçu', 'yrc', x.tk, 'line sm', 'file') : `<span class="sm mute">attend : ${WHO[a[0]]}</span>`] };
+  });
+  return `${head('Paiement des producteurs', `Net à payer = poids net accepté × ${F(S.cfg.prix)}/kg, moins le remboursement des crédits et les autres retenues du ticket.`)}
+    <div class="grid g-kpi">${PAY_LAB.map((t, k) => kpi(t, S.paiements.filter(x => x.st === k).length, F(S.paiements.filter(x => x.st === k).reduce((s, x) => s + x.mt, 0)), k === 3 ? 'check' : k === 2 ? 'wallet' : 'clock', k === 2 ? 'gold' : k === 3 ? '' : 'blue')).join('')}</div>
+    <div class="card stack">${table([{ h: 'Ticket', m: 1 }, { h: 'Producteur' }, { h: 'Net à payer', r: 1 }, { h: 'Statut' }, { h: '', x: 1 }], rows, 'Aucun ticket à payer.')}</div>
+    <div class="card stack"><h3>Circuit de paiement</h3>${stepper(['Pesée et ticket · Agt/Pesage', 'Contrôle · Comptabilité', 'Validation · Resp. DAF', 'Paiement · Caissier', 'Producteur payé'], 3)}</div>`;
+}
+
+/* 6.9 Agents Suivi-Terrain & zones */
+function vAgt() {
+  const e = can('agt');
+  return `${head('Agents Suivi-Terrain · portefeuilles par zone', "Chaque producteur appartient à une zone ; l'Agt/S-T affecté à la zone suit tout son portefeuille.")}
+    <div class="grid g-kpi">${S.agents.map(a => { const ps = S.producteurs.filter(p => agentOf(p) === a.id); return kpi(a.n, ps.length + ' producteurs', S.parcelles.filter(x => ps.some(p => p.id === x.prod)).length + ' parcelles · ' + (S.zones.filter(z => z.ag === a.id).map(z => z.n).join(', ') || 'aucune zone'), 'map'); }).join('')}</div>
+    <div class="card stack">${table([{ h: 'Zone', m: 1 }, { h: 'Producteurs', r: 1 }, { h: 'Parcelles', r: 1 }, { h: 'Agent affecté' }],
+      S.zones.map(z => ({ c: [`<b>${esc(z.n)}</b>`, S.producteurs.filter(p => p.zone === z.id).length, S.parcelles.filter(x => prod(x.prod).zone === z.id).length,
+        `<select data-chg="za" data-id="${z.id}" aria-label="Agent de la zone ${esc(z.n)}" ${e ? '' : 'disabled'}>${opts(S.agents.map(a => [a.id, a.n]), z.ag)}</select>`] })))}</div>`;
+}
+
+/* 6.10 Droits & journal d'audit — la matrice est GÉNÉRÉE depuis ACCESS : elle ne peut plus diverger */
+function vAud() {
+
+  const couv = [
+    ['DG · DGA', 'Direction Générale, Service Contrôle Interne', 'DG, DGA, Contrôle Interne', badge('Actif · visas et audit', 'ok')],
+    ['DPM', 'U/Production Jus', 'C/Appro MP Fruits, Agt/S-T, Agt/Pesage', badge('Actif · Bloc 1', 'ok')],
+    ['DPM', 'U/Production Jus', 'C/HQC, chefs d\'équipe, superviseurs de ligne, maintenanciers', badge('Bloc 2', 'gold')],
+    ['DPM', 'U/Fabrication Canettes', 'Superviseur de ligne, maintenanciers, ouvriers', badge('Bloc 2', 'gold')],
+    ['DAF', 'S/FC · Finance et comptabilité', 'Chargé de comptabilité, Caissier', badge('Actif · Bloc 1', 'ok') + ' ' + badge('Bloc 5', 'gold')],
+    ['DAF', 'S/MGE · Moyens généraux', 'Chauffeur (flotte de collecte)', badge('Actif · Bloc 1', 'ok')],
+    ['DAF', 'S/MGE · Moyens généraux', 'Chargés de magasin (MPR-MPPFE), gardien', badge('Bloc 3', 'gold')],
+    ['DAF', 'S/ARH · Administration et RH', 'Secrétaire administratif, coursier', badge('Bloc 5', 'gold')],
+    ['DMCAC', 'S/Vente F. Clientèle', 'C/VF, C/S-PSF, C/MPEC-PF, C/Clientèle, Livreur', badge('Blocs 3 et 4', 'gold')]
+  ];
+  const cols = ['prod', 'tif', 'plan', 'flot', 'pes', 'av', 'pay'], lab = { E: 'Saisie', V: 'Valide', L: 'Lecture' }, tone = { E: 'ok', V: 'gold', L: '' };
+  const rows = Object.keys(ROLES).map(r => ({ c: [`<b>${esc(ROLES[r].n)}</b><div class="xs mute">${esc(ROLES[r].org)}</div>`, ...cols.map(m => { const l = lvl(m, r); return l ? badge(esc((ACC_TXT[m] || {})[r] || lab[l]), tone[l]) : '<span class="mute">—</span>'; })] }));
+  return `${head("Droits par profil & journal d'audit", "Chaque profil correspond à un poste de l'organigramme. Aucune personne ne peut demander, valider et payer seule.")}
+    <div class="card stack"><h3>Couverture de l'organigramme de Promo Fruits Bénin</h3>${table([{ h: 'Direction', m: 1 }, { h: 'Service ou unité' }, { h: 'Postes' }, { h: 'PromoFruits OS' }], couv.map(r => ({ c: r })))}</div>
+    <div class="card stack"><h3>Droits par profil</h3>${table([{ h: 'Profil', m: 1 }, ...cols.map(m => ({ h: MODS[m].n }))], rows)}</div>
+    <div class="card"><h3>Journal d'audit en direct</h3>${S.journal.length ? S.journal.slice(0, 60).map(l => `<div class="sm" style="padding:8px 0;border-top:1px solid var(--line)"><span class="mute">${l.h}</span> · <b>${esc(l.who)}</b> · ${esc(l.a)}</div>`).join('') : empty("Aucune action pour l'instant. Chaque déclaration, TIF, affectation, pesée, validation et paiement sera tracé ici.", 'shield')}</div>`;
+}
+
+/* 6.11 Paramètres */
+function vParam() {
+  const c = S.cfg, ed = cap('regles'), br = cap('brand'), cv = n => { const v = getComputedStyle(document.documentElement).getPropertyValue(n).trim(); return /^#[0-9a-f]{6}$/i.test(v) ? v : '#0f6b43'; };
+  return `${head('Paramètres', "Règles métier de l'approvisionnement et identité de l'entreprise.")}
+    <div class="card stack"><h3>Règles métier</h3>${ed ? '' : '<p class="sm mute">Modifiables par le C/Appro, le DAF ou le DG.</p>'}
+      <div class="form2">
+        ${field('Prix du kg d\'ananas (F)', `<input id="r-prix" type="number" min="1" value="${c.prix}" ${ed ? '' : 'disabled'}>`, 'Prix d\'achat au producteur, fixé par la Direction')}
+        ${field('Taux de remboursement par défaut (%)', `<input id="r-taux" type="number" min="0" step="0.5" value="${c.taux}" ${ed ? '' : 'disabled'}>`, 'Majoration appliquée aux intrants avancés')}
+        ${field('Plafond de retenue par pesée (%)', `<input id="r-plaf" type="number" min="0" max="100" value="${c.plafond}" ${ed ? '' : 'disabled'}>`, 'Part maximale de la valeur d\'une pesée prélevée pour rembourser une avance')}
+        ${field('Seuil de visa du DG (F)', `<input id="r-seuil" type="number" min="0" step="10000" value="${c.seuil}" ${ed ? '' : 'disabled'}>`, 'Au-delà, l\'avance exige le visa du DG')}
+        ${field('Délai TIF → récolte (jours)', `<input id="r-itr" type="number" min="90" max="300" value="${c.itr}" ${ed ? '' : 'disabled'}>`, 'Références INRAB (Cayenne lisse) : récolte à partir du 6ᵉ mois après le TIF')}
+        ${field('Rendement de planification (t/ha)', `<input id="r-rdt" type="number" min="10" max="90" step="1" value="${c.rdt}" ${ed ? '' : 'disabled'}>`, 'Environ 47 t/ha observées chez les producteurs du Sud-Bénin')}
+      </div>${ed ? btn('Enregistrer les règles', 'rsv', undefined, '', 'check') : ''}</div>
+    <div class="card stack"><h3>Identité de l'entreprise</h3>${br ? '' : '<p class="sm mute">Réservé à l\'administrateur.</p>'}
+      <div class="form2">${field("Nom de l'entreprise", `<input id="b-nom" value="${esc(c.nom)}" ${br ? '' : 'disabled'}>`)}
+        <div class="field">Logo<div class="row"><span class="brand"><span class="mark" style="width:48px;height:48px">${c.logo ? `<img src="${c.logo}" alt="">` : ic('pine')}</span></span>${br ? `<input id="b-logo" type="file" accept="image/*" data-chg="logo" style="max-width:240px">${btn('Retirer', 'blrs', undefined, 'line sm')}` : ''}</div></div>
+        ${field('Couleur principale', `<input id="b-c1" type="color" value="${cv('--brand')}" ${br ? '' : 'disabled'}>`)}${field('Accent (or)', `<input id="b-c2" type="color" value="${cv('--gold')}" ${br ? '' : 'disabled'}>`)}${field('Fond du menu', `<input id="b-c3" type="color" value="${cv('--side')}" ${br ? '' : 'disabled'}>`)}</div>
+      ${br ? `<div class="row">${btn('Enregistrer', 'bsv', undefined, '', 'check')}${btn('Réinitialiser', 'bre', undefined, 'line')}</div>` : ''}
+      <p class="sm mute">Le nom et le logo apparaissent dans le menu, sur les tickets de pesée et les reçus.</p></div>
+    <div class="card stack"><h3>Données de démonstration</h3><p class="sm mute">Toutes les saisies sont conservées dans ce navigateur. Réinitialisez pour repartir du jeu de données initial.</p>${btn('Réinitialiser la démo', 'reset', undefined, 'danger', 'refresh')}</div>`;
+}
+
+/* 6.12 Fiche producteur (tiroir) */
+function drawerHtml() {
+  const p = prod(U.dp), s = yearStats(p, S.annee), t = s.att ? Math.round(s.liv / s.att * 100) : 0, ed = can('prod');
+  const tabs = [['id', 'Identité'], ['parc', 'Parcelles'], ['hist', 'Historique'], ['av', 'Avances'], ['tk', 'Tickets']];
+  let b = '';
+  if (U.tab === 'id') b = `<div class="card flat"><dl class="kv"><dt>Groupement</dt><dd>${esc(p.grp)}</dd><dt>Sexe</dt><dd>${p.sexe === 'F' ? 'Femme' : 'Homme'}</dd><dt>Contact</dt><dd><a href="tel:${esc(p.tel.replace(/ /g, ''))}">${esc(p.tel)}</a></dd><dt>Zone · agent</dt><dd>${esc(zoneOf(p.zone).n)} · ${esc(agentNom(agentOf(p)))}</dd><dt>Superficie</dt><dd>${fmt1(S.parcelles.filter(x => x.prod === p.id).reduce((a, x) => a + x.ha, 0))} ha</dd><dt>Taux de livraison ${S.annee}</dt><dd>${t} %</dd></dl></div>
+    <div class="row">${can('plan') ? btn('Planifier une livraison', 'go', 'plan', '', 'calendar') : ''}${ed ? btn('Modifier', 'pedit', p.id, 'line', 'edit') : ''}</div>`;
+  if (U.tab === 'parc') b = S.parcelles.filter(x => x.prod === p.id).map(pcard).join('') + (ed || cap('trace') ? btn('Ajouter une parcelle', 'pcnew', p.id, 'line', 'plus') : '');
+  if (U.tab === 'hist') { const ys = [...S.annees], vals = ys.map(y => yearStats(p, y)), mx = Math.max(1, ...vals.map(v => Math.max(v.att, v.liv)));
+    b = `<div class="card flat"><svg viewBox="0 0 300 150" width="100%" role="img" aria-label="Volumes attendus et livrés par campagne">${ys.map((y, i) => { const x0 = 20 + i * 92, ha = vals[i].att / mx * 100, hl = vals[i].liv / mx * 100;
+      return `<rect x="${x0}" y="${115 - ha}" width="34" height="${ha}" rx="4" fill="var(--line)"/><rect x="${x0 + 38}" y="${115 - hl}" width="34" height="${hl}" rx="4" fill="${y === S.annee ? 'var(--brand)' : 'var(--ok)'}"/><text x="${x0 + 36}" y="136" text-anchor="middle" font-size="11" fill="var(--ink-3)">${y}</text><text x="${x0 + 55}" y="${111 - hl}" text-anchor="middle" font-size="10" fill="var(--ink)">${fmt(vals[i].liv)}</text>`; }).join('')}</svg>
+      <div class="legend"><span><i style="background:var(--line)"></i>Attendu (t)</span><span><i style="background:var(--brand)"></i>Livré (t)</span></div></div>`; }
+  if (U.tab === 'av') { const a = S.avances.filter(x => x.prod === p.id); b = a.length ? a.map(x => `<div class="card flat stack" style="gap:6px"><b>${esc(x.objet)}</b><div class="sm">${F(x.est)} d'intrants · ${F(x.m)} à rembourser (${x.taux} %)</div><div class="row">${badge(avLabel(x), x.st === 3 ? 'ok' : 'info')}<span class="sm mute">${Math.round(x.rb / x.m * 100)} % remboursé</span></div></div>`).join('') : empty('Aucune avance pour ce producteur.', 'cash'); }
+  if (U.tab === 'tk') { const w = S.pesees.filter(x => x.prod === p.id); b = w.length ? w.map(x => { const py = S.paiements.find(z => z.tk === x.id); return `<div class="card flat row sp"><div><b>${x.id}</b><div class="sm mute">${fmt(x.net)} kg · ${F(py ? py.mt : 0)}</div></div><span class="row">${py ? badge(PAY_LAB[py.st], py.st === 3 ? 'ok' : 'warn') : ''}${btn('Ticket', 'tkt', x.id, 'line sm', 'file')}</span></div>`; }).join('') : empty('Aucune pesée pour ce producteur.', 'scale'); }
+  return `${sheetHead(esc(p.nom), esc(p.grp) + ' · ' + esc(zoneOf(p.zone).n))}<div class="tabs" role="tablist">${tabs.map(([k, n]) => `<button class="${U.tab === k ? 'on' : ''}" role="tab" data-a="tab" data-v="${k}">${n}</button>`).join('')}</div><div class="stack">${b}</div>`;
+}
+
+/* ═══ Coque : barre latérale, barre supérieure, navigation mobile ═══ */
+const VIEWS = { dash: vDash, prod: vProd, tif: vTif, plan: vPlan, flot: vFlot, pes: vPes, av: vAv, pay: vPay, agt: vAgt, aud: vAud, param: vParam };
+const logoMark = () => S.cfg.logo ? `<img src="${S.cfg.logo}" alt="">` : ic('pine');
+function renderShell() {
+  const r = ROLES[U.role], nav = navFor(U.role), T = tasks().length, mob = nav.slice(0, nav.length > 5 ? 4 : 5);
+  const side = nav.map(m => `<button class="nav ${m === U.view ? 'on' : ''}" data-a="go" data-v="${m}">${ic(MODS[m].i)}${MODS[m].n}</button>`).join('');
+  const prof = `<div class="prof"><span class="only-m">Profil simulé</span><select data-chg="role" aria-label="Profil simulé" class="grow">${ORG_ORDER.map(o => { const L = Object.entries(ROLES).filter(([, v]) => v.org === o); return L.length ? `<optgroup label="${esc(o)}">${L.map(([k, v]) => `<option value="${k}" ${k === U.role ? 'selected' : ''}>${esc(v.n)}</option>`).join('')}</optgroup>` : ''; }).join('')}</select></div>`;
+  const results = U.srch.length > 1 ? S.producteurs.filter(p => p.nom.toLowerCase().includes(U.srch.toLowerCase())).slice(0, 6) : [];
+  return `<aside class="side"><div class="brand"><span class="mark">${logoMark()}</span><div><strong>${esc(S.cfg.nom)}</strong><small>PromoFruits OS · Approvisionnement</small></div></div>
+      <div class="grp">Modules</div>${side}<div class="foot">${esc(r.n)}<br>${esc(r.org)}<br><br>De la déclaration du producteur à son paiement.</div></aside>
+    <div class="main">
+      ${U.off ? `<div class="banner"><span>${ic('wifioff', 's')} Mode hors-ligne · ${U.qn} action(s) en attente de synchronisation</span><button class="btn sm gold" data-a="off">Synchroniser</button></div>` : ''}
+      <header class="top"><span class="logo-m only-m">${logoMark()}</span><h1>${MODS[U.view].n}</h1><span class="sp"></span>
+        <button class="btn line icon sm only-m" data-a="srchtog" aria-label="Rechercher un producteur">${ic('search', 's')}</button>
+        <div class="search srch ${U.srOpen ? 'open' : ''}" style="position:relative">${ic('search', 's')}<input id="gs" type="search" placeholder="Rechercher un producteur…" value="${esc(U.srch)}" data-inp="gs" aria-label="Recherche globale de producteur" autocomplete="off">
+          ${results.length ? `<div class="results">${results.map(p => `<button data-a="open" data-v="${p.id}"><b>${esc(p.nom)}</b><span class="mute sm">${esc(p.grp)}</span></button>`).join('')}</div>` : ''}</div>
+        ${prof}
+        <button class="btn line icon sm bell" data-a="notif" aria-label="Tâches à faire : ${T}" title="Tâches à faire">${ic('bell', 's')}${T ? `<b>${T}</b>` : ''}</button>
+        <button class="btn ${U.off ? 'gold' : 'line'} icon sm" data-a="off" aria-label="${U.off ? 'Revenir en ligne' : 'Simuler le mode hors-ligne'}" title="Simuler le mode terrain hors-ligne (PWA)">${ic(U.off ? 'wifioff' : 'wifi', 's')}</button>
+        <button class="btn line icon sm" data-a="theme" aria-label="Changer de thème">${ic('moon', 's')}</button></header>
+      <main class="page" id="view" tabindex="-1">${VIEWS[U.view]()}</main></div>
+    <nav class="tabbar" aria-label="Navigation principale">${mob.map(m => `<button class="${m === U.view ? 'on' : ''}" data-a="go" data-v="${m}">${ic(MODS[m].i)}<span>${MODS[m].s}</span></button>`).join('')}${nav.length > 5 ? `<button class="${!mob.includes(U.view) ? 'on' : ''}" data-a="menu">${ic('menu')}<span>Plus</span></button>` : ''}</nav>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   7. ACTIONS — registre unique
+   A  : clics  (attribut data-a)       CH : changements (data-chg)       IN : saisies (data-inp)
+   Chaque action modifie S, journalise (audit), puis appelle commit() = sauvegarde + rendu.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const A = {}, CH = {}, IN = {};
+const val = id => ($(id) || { value: '' }).value;
+const num = id => +val(id) || 0;
+const bad = (cond, msg) => { if (cond) toast(msg, true); return cond; };
+const deny = () => { toast("Cette action n'est pas ouverte à votre profil.", true); return false; };
+const commit = () => { save(); render(); };
+const done = (msg, log) => { if (log) audit(log); if (msg) toast(msg); closeSheetSilent(); commit(); };
+const closeSheetSilent = () => { U.sheet = null; };
+
+/* Rendu complet, en conservant le focus du champ en cours de saisie et la position de défilement */
+function render() {
+  const ae = document.activeElement, id = ae && ae.id, ss = ae && ae.selectionStart, se = ae && ae.selectionEnd, sy = window.scrollY;
+  if (!veh(U.drv) && S.vehicules[0]) U.drv = S.vehicules[0].id;
+  $('#app').innerHTML = renderShell(); applyBrand(); paintLayer();
+  if (id && !$('#layer .sheet')) { const n = document.getElementById(id); if (n && n !== document.activeElement) { n.focus({ preventScroll: true }); try { if (ss != null) n.setSelectionRange(ss, se); } catch (e) { /* champ sans sélection */ } } }
+  window.scrollTo(0, sy);
+  if (U.view === 'pes' && can('pes')) pesPreview();
+}
+function applyBrand() {
+  const r = document.documentElement.style, c = S.cfg.couleurs || {};
+  [['--brand', c.brand], ['--gold', c.gold], ['--side', c.side]].forEach(([k, v]) => v ? r.setProperty(k, v) : r.removeProperty(k));
+  if (c.brand) r.setProperty('--brand-soft', `color-mix(in srgb, ${c.brand} 14%, var(--surface))`); else r.removeProperty('--brand-soft');
+  document.title = S.cfg.nom + ' OS · Approvisionnement';
+}
+
+/* 7.1 Navigation & interface */
+A.go = v => { if (!lvl(v)) return toast("Ce module n'est pas ouvert à votre profil.", true); U.view = v; U.dp = null; U.sheet = null; U.srOpen = false; U.srch = ''; render(); window.scrollTo(0, 0); };
+A.menu = () => sheet(`${sheetHead('Tous les modules')}<div class="picker">${navFor(U.role).map(m => `<button class="pickrow" data-a="go" data-v="${m}">${ic(MODS[m].i)}<span class="grow b" style="text-align:left">${MODS[m].n}</span>${ic('chev', 's')}</button>`).join('')}</div>`);
+A.theme = () => { const d = document.documentElement, dark = (d.dataset.theme || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light')) === 'dark'; d.dataset.theme = dark ? 'light' : 'dark'; render(); };
+A.off = () => { if (U.off) { toast(U.qn + ' action(s) synchronisée(s) avec le serveur'); U.off = false; U.qn = 0; } else { U.off = true; toast('Mode hors-ligne : les saisies sont mises en file'); } render(); };
+A.srchtog = () => { U.srOpen = !U.srOpen; render(); if (U.srOpen) { const i = $('#gs'); if (i) i.focus(); } };
+A.open = v => { U.dp = +v; U.tab = 'id'; U.sheet = null; U.srch = ''; U.srOpen = false; render(); };
+A.tab = v => { U.tab = v; paintLayer(); };
+A.dc = () => { U.dp = null; paintLayer(); };
+A.mc = () => { if (U.sheet) closeSheet(); else A.dc(); };
+A.ovx = (v, t, e) => { if (e.target === t) A.mc(); };
+A.notif = () => { const T = tasks(); sheet(`${sheetHead('Mes tâches à faire', esc(ROLES[U.role].n))}${T.length ? T.slice(0, 30).map(t => `<button class="todo" data-a="gon" data-v="${t.v}"><span class="ico">${ic(t.i, 's')}</span><span class="grow sm" style="text-align:left">${esc(t.t)}</span>${ic('chev', 's')}</button>`).join('') : empty('Aucune tâche en attente.', 'check')}`); };
+A.gon = v => { closeSheetSilent(); A.go(v); };
+A.reset = () => sheet(`${sheetHead('Réinitialiser la démo ?')}<p class="mute">Toutes vos saisies seront effacées et les données de démonstration restaurées.</p><div class="row">${btn('Réinitialiser', 'reset2', undefined, 'danger')}${btn('Annuler', 'mc', undefined, 'line')}</div>`);
+A.reset2 = () => { try { localStorage.removeItem(STORE); } catch (e) { /* ignoré */ } S = seed(); U.prodF.year = String(S.annee); U.sheet = null; U.dp = null; U.off = false; U.qn = 0; U.tf.sel.clear(); toast('Démo réinitialisée'); commit(); };
+CH.role = v => { U.role = v; U.view = ROLES[v].home; U.dp = null; U.sheet = null; U.tf.zone = v === 'suivi' ? 1 : 0; U.tf.sel.clear(); commit(); window.scrollTo(0, 0); };
+CH.drv = v => { U.drv = +v; render(); };
+IN.gs = v => { U.srch = v; render(); };
+
+/* 7.2 Producteurs */
+const zoneOpts = () => S.zones.map(z => [z.id, `${z.n} · ${agentNom(z.ag)}`]);
+const prodForm = p => `<div class="form2">${field('Nom complet', `<input id="nn" value="${esc(p ? p.nom : '')}" autocomplete="off">`, 'Nom en majuscules, prénom ensuite')}${field('Groupement', `<select id="ng">${opts(S.groupes.map(g => [g, g]), p ? p.grp : S.groupes[0])}</select>`)}
+  ${field('Sexe', `<select id="ns">${opts([['F', 'Femme'], ['M', 'Homme']], p ? p.sexe : 'F')}</select>`)}${field('Contact', `<input id="nt" type="tel" inputmode="tel" placeholder="+229 01 …" value="${esc(p ? p.tel : '')}">`)}
+  ${p ? '' : field('Superficie (ha)', '<input id="nh" type="number" min="0.1" step="0.1" inputmode="decimal" value="3">')}${field('Zone', `<select id="nz">${opts(zoneOpts(), p ? p.zone : 1)}</select>`)}</div>`;
+A.pnew = () => can('prod') ? sheet(`${sheetHead('Nouveau producteur')}${prodForm()}<div class="row">${btn('Enregistrer', 'psv')}${btn('Annuler', 'mc', undefined, 'line')}</div>`) : deny();
+A.psv = () => {
+  if (!can('prod')) return deny();
+  const n = val('#nn').trim().toUpperCase(), ha = num('#nh');
+  if (bad(!n, 'Saisissez le nom du producteur.') || bad(S.producteurs.some(p => p.nom.toUpperCase() === n), 'Ce producteur existe déjà : doublon évité.') || bad(!(ha > 0), 'Saisissez une superficie valide.')) return;
+  const id = S.seq.prod++;
+  S.producteurs.push({ id, nom: n, grp: val('#ng'), sexe: val('#ns'), tel: val('#nt') || '—', zone: +val('#nz'), ha, hist: {} });
+  S.parcelles.push({ id: S.seq.parc++, prod: id, nom: 'Champ A', ha, gps: zoneOf(+val('#nz')).c.slice(), pts: [], photo: false, tif: null, pr: null, s: 0, livT: 0 });
+  done('Producteur ajouté', 'Producteur créé : ' + n);
+};
+A.pedit = v => { if (!can('prod')) return deny(); const p = prod(+v); sheet(`${sheetHead('Modifier le producteur')}${prodForm(p)}<div class="row">${btn('Enregistrer', 'pupd', p.id)}${btn('Annuler', 'mc', undefined, 'line')}</div>`); };
+A.pupd = v => {
+  const p = prod(+v), n = val('#nn').trim().toUpperCase();
+  if (bad(!n, 'Le nom est obligatoire.') || bad(S.producteurs.some(q => q.id !== p.id && q.nom.toUpperCase() === n), 'Un autre producteur porte déjà ce nom.')) return;
+  Object.assign(p, { nom: n, grp: val('#ng'), sexe: val('#ns'), tel: val('#nt'), zone: +val('#nz') }); done('Fiche mise à jour', 'Producteur modifié : ' + n);
+};
+/** Intégrité : on ne supprime pas un producteur qui a des pesées, des paiements ou des avances en cours. */
+const prodLocks = id => ({ tk: S.pesees.filter(w => w.prod === id).length, av: S.avances.filter(a => a.prod === id).length });
+A.pdel = v => {
+  if (!can('prod')) return deny(); const p = prod(+v), L = prodLocks(p.id);
+  if (L.tk || L.av) return sheet(`${sheetHead('Suppression impossible')}<p class="mute">${esc(p.nom)} a ${L.tk} pesée(s) et ${L.av} avance(s) enregistrée(s). Pour garder une comptabilité exacte, une fiche avec historique ne peut pas être supprimée.</p>${btn('Compris', 'mc')}`);
+  sheet(`${sheetHead('Supprimer ' + esc(p.nom) + ' ?')}<p class="mute">Ses parcelles et missions seront supprimées. Action définitive.</p><div class="row">${btn('Supprimer', 'pdel2', p.id, 'danger')}${btn('Annuler', 'mc', undefined, 'line')}</div>`);
+};
+A.pdel2 = v => {
+  const id = +v, p = prod(id), pids = S.parcelles.filter(x => x.prod === id).map(x => x.id);
+  S.missions = S.missions.filter(m => !pids.includes(m.parc)); S.parcelles = S.parcelles.filter(x => x.prod !== id); S.producteurs = S.producteurs.filter(q => q.id !== id);
+  pids.forEach(i => U.tf.sel.delete(i)); U.dp = null; done('Producteur supprimé', 'Producteur supprimé : ' + p.nom);
+};
+CH.pf = v => { U.prodF.grp = v; render(); }; CH.py = v => { U.prodF.year = v; render(); }; IN.pq = v => { U.prodF.q = v; render(); };
+A.xp = () => {
+  const y = U.prodF.year === 'Toutes' ? 'Toutes' : +U.prodF.year;
+  const rs = prodRows().map(r => ({ Producteur: r.p.nom, Groupement: r.p.grp, Zone: zoneOf(r.p.zone).n, Agent: agentNom(agentOf(r.p)), Contact: r.p.tel, Parcelles: r.np, 'Superficie (ha)': +r.ha.toFixed(1), 'Volume attendu (t)': Math.round(r.s.att), 'Volume livré (t)': Math.round(r.s.liv), 'Taux (%)': r.t, Campagne: y }));
+  if (!rs.length) return toast('Aucun producteur à exporter.', true);
+  if (window.XLSX) { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rs), 'Producteurs'); XLSX.writeFile(wb, `producteurs_${y}.xlsx`); }
+  else { const h = Object.keys(rs[0]), c = [h, ...rs.map(r => h.map(k => r[k]))].map(r => r.join(';')).join('\n'), a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + c], { type: 'text/csv' })); a.download = `producteurs_${y}.csv`; a.click(); }
+  toast('Export de ' + rs.length + ' producteur(s)');
+};
+A.ynew = () => can('prod') ? sheet(`${sheetHead('Nouvelle campagne')}${field('Année', `<input id="yn" type="number" min="2000" max="2100" value="${S.annee + 1}">`)}<p class="sm mute">Les volumes de la campagne en cours sont archivés dans l'historique. Les parcelles livrées repartent à « À programmer » ; les autres poursuivent leur cycle avec un compteur de livraison remis à zéro.</p><div class="row">${btn('Ouvrir la campagne', 'ynsv')}${btn('Annuler', 'mc', undefined, 'line')}</div>`) : deny();
+A.ynsv = () => {
+  const y = +val('#yn');
+  if (bad(!(y > S.annee && y < 2100), 'Indiquez une année postérieure à la campagne en cours.') || bad(S.annees.includes(y), 'Cette campagne existe déjà.')) return;
+  S.producteurs.forEach(p => { p.hist = p.hist || {}; p.hist[S.annee] = yearStats(p, S.annee); });
+  S.parcelles.forEach(x => { if (x.s === 5) { x.s = 0; x.tif = null; x.pr = null; } x.livT = 0; });
+  S.annees.push(y); S.annee = y; S.annees.sort(); U.prodF.year = String(y); done('Campagne ' + y + ' ouverte', 'Campagne ouverte : ' + y);
+};
+
+/* 7.3 Parcelles, traçage GPS & workflow TIF */
+A.pcnew = v => (can('prod') || cap('trace')) ? sheet(`${sheetHead('Nouvelle parcelle')}<div class="form2">${field('Nom', `<input id="cn" value="Champ ${'ABCDEFGH'[S.parcelles.filter(x => x.prod === +v).length] || 'Z'}">`)}${field('Superficie déclarée (ha)', '<input id="ch" type="number" min="0.1" step="0.1" value="2">')}</div><div class="row">${btn('Ajouter', 'pcsv', v)}${btn('Annuler', 'mc', undefined, 'line')}</div>`) : deny();
+A.pcsv = v => {
+  const ha = num('#ch'), p = prod(+v); if (bad(!(ha > 0), 'Indiquez une superficie valide.')) return;
+  S.parcelles.push({ id: S.seq.parc++, prod: p.id, nom: val('#cn') || 'Champ', ha, gps: zoneOf(p.zone).c.slice(), pts: [], photo: false, tif: null, pr: null, s: 0, livT: 0 }); done('Parcelle ajoutée', 'Parcelle ajoutée pour ' + p.nom);
+};
+A.pcedit = v => { if (!can('prod')) return deny(); const x = parc(+v), tr = traced(x); sheet(`${sheetHead('Modifier la parcelle')}<div class="form2">${field('Nom', `<input id="cn" value="${esc(x.nom)}">`)}${field('Superficie déclarée (ha)', `<input id="ch" type="number" step="0.1" value="${x.ha}" ${tr ? 'disabled' : ''}>`, tr ? "Mesurée par l'Agt/S-T : non modifiable." : '')}</div><div class="row">${btn('Enregistrer', 'pcesv', x.id)}${btn('Annuler', 'mc', undefined, 'line')}</div>`); };
+A.pcesv = v => { const x = parc(+v); x.nom = val('#cn') || x.nom; if (!traced(x) && num('#ch') > 0) x.ha = num('#ch'); done('Parcelle modifiée', 'Parcelle modifiée : ' + pnom(x.prod)); };
+A.pcdel = v => {
+  if (!can('prod')) return deny(); const x = parc(+v);
+  if (x.livT > 0) return sheet(`${sheetHead('Suppression impossible')}<p class="mute">Cette parcelle a déjà fait l'objet de livraisons : elle est conservée pour la traçabilité.</p>${btn('Compris', 'mc')}`);
+  sheet(`${sheetHead('Supprimer la parcelle ?')}<p class="mute">${esc(pnom(x.prod))} · ${esc(x.nom)}. Les missions liées seront supprimées.</p><div class="row">${btn('Supprimer', 'pcdel2', x.id, 'danger')}${btn('Annuler', 'mc', undefined, 'line')}</div>`);
+};
+A.pcdel2 = v => { const x = parc(+v); S.missions = S.missions.filter(m => m.parc !== x.id); S.parcelles = S.parcelles.filter(y => y.id !== x.id); U.tf.sel.delete(x.id); done('Parcelle supprimée', 'Parcelle supprimée : ' + pnom(x.prod)); };
+
+/* Traçage : photo probante + contour (touchez la carte, ou marchez et ajoutez votre position) */
+A.ptr = v => {
+  if (!cap('trace')) return deny(); const x = parc(+v);
+  if (bad(traced(x) || x.tif, 'Parcelle déjà tracée : le traçage se fait une seule fois, avant le TIF.')) return;
+  U.trace = { id: x.id, pts: [], ph: null, o: x.gps.slice() }; trM();
+};
+function trM() {
+  const T = U.trace, x = parc(T.id), k = Math.cos(T.o[0] * Math.PI / 180), z = T.pts.map(([a, b]) => `${(150 + (b - T.o[1]) * 1e5 * k).toFixed(0)},${(110 - (a - T.o[0]) * 1e5).toFixed(0)}`);
+  sheet(`${sheetHead(esc(pnom(x.prod)) + ' · ' + esc(x.nom), 'Traçage unique avant le TIF')}
+    <div class="stack"><div class="sm b">1 · Photo probante du champ</div>${T.ph ? `<img src="${T.ph}" alt="Photo du champ" style="width:100%;max-height:150px;object-fit:cover;border-radius:12px">` : ''}<input type="file" id="trph" accept="image/*" capture="environment" data-chg="trph">
+    <div class="sm b">2 · Contour : touchez la carte, ou marchez le long du champ</div>
+    <svg class="map" data-a="tpad" viewBox="0 0 300 220" style="cursor:crosshair;touch-action:manipulation" role="img" aria-label="Zone de tracé du contour"><polygon points="${z.join(' ')}" fill="var(--gold)" fill-opacity=".4" stroke="var(--brand)" stroke-width="2"/>${z.map(p => `<circle cx="${p.split(',')[0]}" cy="${p.split(',')[1]}" r="4.5" fill="var(--brand)"/>`).join('')}</svg>
+    <div class="row">${btn('Ma position', 'tgps', undefined, 'line sm', 'pin')}${btn('Simuler un tour', 'tsim', undefined, 'line sm')}${btn('Annuler le dernier point', 'tund', undefined, 'line sm')}</div>
+    <div class="calc"><div class="xs b mute">SUPERFICIE CALCULÉE</div><div class="big">${haPoly(T.pts).toFixed(2)} ha</div><div class="sm mute">${T.pts.length} point(s) GPS</div></div>
+    <div class="row">${btn('Soumettre la fiche', 'tsv')}${btn('Annuler', 'mc', undefined, 'line')}</div></div>`);
+}
+/** Superficie d'un polygone GPS (projection locale), en hectares */
+function haPoly(p) {
+  if (p.length < 3) return 0; const k = Math.cos(p[0][0] * Math.PI / 180), z = p.map(([a, o]) => [(o - p[0][1]) * 111320 * k, (a - p[0][0]) * 110540]); let s = 0;
+  for (let i = 0; i < z.length; i++) { const j = (i + 1) % z.length; s += z[i][0] * z[j][1] - z[j][0] * z[i][1]; } return Math.abs(s) / 2e4;
+}
+A.tpad = (v, t, e) => { const r = t.getBoundingClientRect(), T = U.trace, qx = (e.clientX - r.left) / r.width * 300, qy = (e.clientY - r.top) / r.height * 220; T.pts.push([T.o[0] + (110 - qy) / 1e5, T.o[1] + (qx - 150) / (1e5 * Math.cos(T.o[0] * Math.PI / 180))]); trM(); };
+A.tgps = () => navigator.geolocation ? navigator.geolocation.getCurrentPosition(p => { const T = U.trace; if (!T.pts.length) T.o = [p.coords.latitude, p.coords.longitude]; T.pts.push([p.coords.latitude, p.coords.longitude]); trM(); }, () => toast("Position refusée : utilisez le tracé tactile", true)) : toast('GPS indisponible', true);
+A.tsim = () => { const T = U.trace; T.pts = gRect(T.o[0] - 40 / 111e3, T.o[1] - 50 / 111e3, 100, 80); trM(); };
+A.tund = () => { U.trace.pts.pop(); trM(); };
+CH.trph = (v, t) => { if (!t.files[0]) return; const r = new FileReader(); r.onload = () => { U.trace.ph = r.result; trM(); }; r.readAsDataURL(t.files[0]); };
+A.tsv = () => {
+  const T = U.trace; if (bad(!T.ph || T.pts.length < 3, 'Photo et 3 points GPS minimum requis.')) return;
+  const x = parc(T.id); x.pts = T.pts; x.ha = +haPoly(x.pts).toFixed(2); x.gps = [x.pts.reduce((s, p) => s + p[0], 0) / x.pts.length, x.pts.reduce((s, p) => s + p[1], 0) / x.pts.length]; x.photo = true;
+  done(U.off ? "Hors ligne : fiche mise en file d'attente" : 'Parcelle tracée · le C/Appro peut programmer le TIF', `Parcelle ${pnom(x.prod)} · ${x.nom} mesurée : ${x.ha} ha`); U.trace = null;
+};
+A.tprog = v => {
+  if (!can('plan')) return deny(); const x = parc(+v);
+  sheet(`${sheetHead('Programmer le TIF', esc(pnom(x.prod)) + ' · ' + esc(x.nom) + ' · ' + x.ha + ' ha')}${field('Date de récolte visée', `<input id="tpd" type="date" min="${iso(today())}" value="${iso(addDays(today(), S.cfg.itr + 7))}">`, `Le TIF est réalisé ${S.cfg.itr} jours (≈ ${Math.round(S.cfg.itr / 30.4)} mois) avant la récolte.`)}<div class="row">${btn('Programmer', 'tpsv', x.id)}${btn('Annuler', 'mc', undefined, 'line')}</div>`);
+};
+A.tpsv = v => { const x = parc(+v), d = val('#tpd'); if (bad(!d, 'Choisissez la date de récolte visée.')) return; x.pr = d; x.s = 1; done("TIF programmé · l'Agt/S-T est notifié", `TIF programmé ${pnom(x.prod)} · ${x.nom}`); };
+A.ppr = v => {
+  const x = parc(+v), d = val('#pd' + v); if (!can('plan')) return deny();
+  if (bad(!d, 'Choisissez la date de récolte visée.') || bad(!traced(x), "La parcelle doit d'abord être tracée par l'Agt/S-T.")) return;
+  x.pr = d; x.s = Math.max(x.s, 1); audit(`Récolte programmée ${pnom(x.prod)} · ${x.nom} : ${d}`);
+  const late = diffDays(tifD(x), today()) < 0; toast(late ? `Attention : le TIF aurait dû être réalisé le ${fdate(tifD(x))}` : 'TIF prévu le ' + fdate(tifD(x)), late); commit();
+};
+A.tadv = v => {
+  const x = parc(+v); if (lvl('tif') !== 'V' || x.s < 1 || x.s > 3) return;
+  if (x.s === 1) return sheet(`${sheetHead('Valider le TIF réalisé', esc(pnom(x.prod)) + ' · ' + esc(x.nom))}${field('Date du traitement', `<input id="tfd" type="date" max="${iso(today())}" value="${iso(today())}">`)}<div class="row">${btn('Valider', 'tadv2', x.id)}${btn('Annuler', 'mc', undefined, 'line')}</div>`);
+  x.s++; audit(`${pnom(x.prod)} · ${x.nom} validé : ${STAGES[x.s].n}`); toast(x.s === 4 ? 'Mûr · à livrer : le C/Appro MP Fruits est notifié' : 'Étape validée : ' + STAGES[x.s].n); commit();
+};
+A.tadv2 = v => { const x = parc(+v); x.tif = val('#tfd') || iso(today()); x.pr = null; x.s = 2; done('TIF validé · Floraison', `TIF réalisé ${pnom(x.prod)} · ${x.nom}`); };
+A.tfs = v => { U.tf.stage = v; U.tf.page = 1; render(); };
+A.tpg = v => { U.tf.page = Math.max(1, U.tf.page + +v); render(); };
+A.tsel = v => { v = +v; U.tf.sel.has(v) ? U.tf.sel.delete(v) : U.tf.sel.add(v); render(); };
+A.tsall = () => { const L = tfList().slice((U.tf.page - 1) * TF_PAGE, U.tf.page * TF_PAGE).map(x => x.id), all = L.every(i => U.tf.sel.has(i)); L.forEach(i => all ? U.tf.sel.delete(i) : U.tf.sel.add(i)); render(); };
+A.tfclr = () => { U.tf.sel.clear(); render(); };
+A.tfadv = () => {
+  let n = 0; [...U.tf.sel].forEach(i => { const x = parc(i), a = x && nextAct(x); if (a && a[1] === 'tadv') { if (x.s === 1) { x.tif = iso(today()); x.pr = null; } x.s++; n++; } });
+  U.tf.sel.clear(); audit(`Étape validée pour ${n} parcelle(s)`); toast(n ? n + ' parcelle(s) validée(s)' : 'Aucune étape validable dans la sélection', !n); commit();
+};
+IN.tq = v => { U.tf.q = v; U.tf.page = 1; render(); };
+CH.tg = v => { U.tf.grp = v; U.tf.page = 1; render(); }; CH.to = v => { U.tf.sort = v; U.tf.page = 1; render(); }; CH.tz = v => { U.tf.zone = +v; U.tf.page = 1; render(); };
+CH.za = (v, t) => { if (!can('agt')) { deny(); return render(); } const z = zoneOf(+t.dataset.id); z.ag = +v; audit(`Zone ${z.n} affectée à ${agentNom(z.ag)}`); toast('Affectation enregistrée'); commit(); };
+
+/* 7.4 Planning, flotte & missions de collecte */
+A.rel = v => { const x = parc(+v); audit('Relance SMS · ' + pnom(x.prod)); toast('SMS de relance envoyé à ' + pnom(x.prod)); commit(); };
+const mvTo = m => { let d = parse(m.date); for (let k = 0; k < 30; k++) { d = addDays(d, 1); if (dow(d) === 6) continue; if (!S.cfg.capJour || mAt(iso(d)).length < S.cfg.capJour) { m.date = iso(d); return true; } } return false; };
+A.mnew = v => {
+  if (!can('plan')) return deny(); const x = parc(+v), rest = +(resteP(x) - plannedT(x)).toFixed(1), h = hvD(x);
+  if (bad(rest <= 0.05, 'Cette parcelle est déjà entièrement couverte par des transports.')) return;
+  const v0 = S.vehicules[0], t0 = Math.min(rest, v0 ? v0.cap : rest), n0 = Math.min(Math.ceil(rest / t0), 12), d0 = h && h > today() ? h : today();
+  sheet(`${sheetHead('Affecter des chargements', esc(pnom(x.prod)) + ' · ' + esc(x.nom))}<div class="alert"><span class="txt">Reste à couvrir : <b>${TN(rest)}</b> sur ${TN(volP(x))}. Une récolte s'étale sur plusieurs chargements, un par jour ouvrable.</span></div>
+    <div class="form2">${field('Date du premier chargement', `<input id="md" type="date" min="${iso(today())}" value="${iso(d0)}">`)}${field('Transport', `<select id="mv" data-chg="mvsel" data-r="${rest}">${opts([...S.vehicules.map(w => [w.id, `Interne · ${w.im} · ${w.nom} (${w.cap} t)`]), [0, 'Producteur (véhicule propre)']], v0 ? v0.id : 0)}</select>`)}
+    ${field('Tonnage par chargement (t)', `<input id="mt" type="number" min="0.1" step="0.1" inputmode="decimal" value="${t0.toFixed(1)}">`)}${field('Nombre de chargements', `<input id="mn" type="number" min="1" max="40" inputmode="numeric" value="${n0}">`, 'Un par jour ouvrable, dimanche exclu')}
+    ${field('Immatriculation (transport producteur)', '<input id="mpl" placeholder="RB 0000 AA">')}</div>
+    <div class="row">${btn('Affecter', 'msv', x.id)}${btn('Annuler', 'mc', undefined, 'line')}</div>`);
+};
+CH.mvsel = (v, t) => { const w = veh(+v), r = +t.dataset.r, cap = w ? w.cap : 3, tt = Math.min(r, cap); if ($('#mt')) $('#mt').value = tt.toFixed(1); if ($('#mn')) $('#mn').value = Math.min(Math.ceil(r / tt), 12); };
+A.msv = v => {
+  const x = parc(+v), d = val('#md'), vid = +val('#mv') || null, w = vid ? veh(vid) : null, t = num('#mt'), n = Math.round(num('#mn')), rest = resteP(x) - plannedT(x);
+  if (bad(!d, 'Choisissez la date.') || bad(dow(parse(d)) === 6, 'Pas de livraison le dimanche : choisissez un autre jour.') || bad(!(t > 0), 'Indiquez le tonnage par chargement.') ||
+      bad(!(n >= 1 && n <= 40), 'Le nombre de chargements doit être compris entre 1 et 40.') || bad(rest < 0.05, 'Cette parcelle est déjà couverte.') || bad(w && t > w.cap + .001, `Capacité du véhicule dépassée (${w ? w.cap : 0} t).`)) return;
+  let rem = rest, cur = parse(d), made = 0, over = 0;
+  for (let i = 0; i < n && rem > 0.05; i++) {
+    while (dow(cur) === 6) cur = addDays(cur, 1);
+    const ti = +Math.min(t, rem).toFixed(1); S.missions.push({ id: S.seq.mis++, parc: x.id, veh: vid, plaque: vid ? '' : val('#mpl'), date: iso(cur), t: ti, dv: 0, done: 0 });
+    if (S.cfg.capJour && mAt(iso(cur)).length > S.cfg.capJour) over++; rem -= ti; made++; cur = addDays(cur, 1);
+  }
+  audit(`${made} chargement(s) affecté(s) · ${pnom(x.prod)} · dès le ${d}`);
+  done(over ? `Attention : limite de ${S.cfg.capJour} camions/jour dépassée sur ${over} jour(s)` : `${made} chargement(s) planifié(s) · missions notifiées au chauffeur`);
+};
+A.mslot = v => {
+  const L = mAt(v);
+  sheet(`${sheetHead(fdateL(parse(v)), `${L.length} camion(s)${S.cfg.capJour ? ' pour ' + S.cfg.capJour + ' prévus' : ' · pas de limite'}`)}${L.map(m => `<div class="card flat row sp"><div><b>${esc(pnom(parc(m.parc).prod))}</b> · ${esc(parc(m.parc).nom)}<div class="sm mute">${esc(m.veh ? veh(m.veh).im : m.plaque || 'véhicule producteur')} · ${TN(m.t)}</div></div>${can('plan') ? btn('Reporter', 'mmv', m.id, 'line sm') : ''}</div>`).join('') || empty('Aucun camion ce jour.', 'truck')}${btn('Fermer', 'mc', undefined, 'line')}`);
+};
+A.mmv = v => { const m = S.missions.find(z => z.id === +v), ok = mvTo(m); closeSheetSilent(); audit('Livraison reportée · ' + pnom(parc(m.parc).prod)); toast(ok ? 'Reporté au ' + fdate(parse(m.date)) : 'Aucun jour disponible', !ok); commit(); };
+A.rbal = v => { const L = mAt(v); let n = 0; while (S.cfg.capJour && L.length > S.cfg.capJour) { if (!mvTo(L.pop())) break; n++; } audit(`Excédent reporté : ${n} camion(s)`); toast(n + ' camion(s) reporté(s)'); commit(); };
+A.cpset = v => { if (!can('plan')) return deny(); S.cfg.capJour = v === '1' ? Math.max(0, num('#cp')) : 0; audit('Camions par jour : ' + (S.cfg.capJour || 'illimité')); toast(S.cfg.capJour ? 'Limite : ' + S.cfg.capJour + ' camions par jour' : 'Aucune limite de camions par jour'); commit(); };
+A.fnew = () => can('plan') ? sheet(`${sheetHead('Nouveau véhicule')}<div class="form2">${field('Transporteur / chauffeur', '<input id="fn">')}${field('Type', `<select id="ft">${opts(['Tricycle', 'Camion 5 t', 'Camion 10 t', 'Camion 15 t', 'Camion frigorifique'].map(t => [t, t]), 'Camion 5 t')}</select>`)}${field('Immatriculation', '<input id="fi" placeholder="RB 0000 AA">')}${field('Capacité (t)', '<input id="fc" type="number" min="0.5" step="0.5" value="5">')}</div><div class="row">${btn('Ajouter', 'fsv')}${btn('Annuler', 'mc', undefined, 'line')}</div>`) : deny();
+A.fsv = () => {
+  if (bad(!val('#fn').trim() || !val('#fi').trim(), 'Nom et immatriculation obligatoires.') || bad(!(num('#fc') > 0), 'Indiquez une capacité valide.')) return;
+  S.vehicules.push({ id: S.seq.veh++, nom: val('#fn').trim(), type: val('#ft'), im: val('#fi').trim().toUpperCase(), cap: num('#fc') }); done('Véhicule ajouté', 'Véhicule ajouté : ' + val('#fi'));
+};
+A.fdel = v => { if (!can('plan')) return deny(); S.missions.forEach(m => { if (m.veh === +v && !m.done) { m.veh = null; m.plaque = 'véhicule producteur'; } }); S.vehicules = S.vehicules.filter(w => w.id !== +v); audit('Véhicule retiré de la flotte'); commit(); };
+A.mdl = v => { const id = +v; if (!S.dl.includes(id)) S.dl.push(id); toast('Feuille de route et carte enregistrées hors-ligne'); commit(); };
+A.mrt = v => {
+  const m = S.missions.find(z => z.id === +v), x = parc(m.parc), d = distKm(USINE, x.gps);
+  sheet(`${sheetHead(esc(pnom(x.prod)) + ' · ' + esc(x.nom), `${d.toFixed(0)} km · environ ${Math.round(d / 38 * 60)} min`)}${mapSvg(x)}<p class="sm mute">Vert : axe goudronné. Rouge pointillé : piste jusqu'au champ, d'après le contour tracé par l'Agt/S-T. GPS ${x.gps[0].toFixed(5)}, ${x.gps[1].toFixed(5)}.</p>${btn('Fermer', 'mc', undefined, 'line')}`);
+};
+A.mval = v => { const m = S.missions.find(z => z.id === +v); if (U.role !== 'trans' || m.dv) return; m.dv = 1; audit('Livraison validée · ' + pnom(parc(m.parc).prod)); toast(U.off ? "Hors ligne : validation en file d'attente" : "Livraison validée · l'Agt/Pesage est notifié"); commit(); };
+
+/* 7.5 Pont-bascule : pesée → ticket → ordre de paiement */
+CH.pmsel = v => { const m = S.missions.find(z => z.id === +v), d = pesDefaults(m); $('#pk').value = d.brut; $('#pt').value = d.tare; pesPreview(); };
+IN.pcalc = () => pesPreview();
+A.psave = () => {
+  if (!can('pes')) return deny(); const f = pesForm();
+  if (bad(!f.m, 'Aucun camion en attente de pesée.') || bad(f.brut <= 0 || f.tare < 0 || f.tare >= f.brut, 'Le poids brut doit dépasser la tare.') || bad(f.refus < 0 || f.refus > 100, 'Le taux de refus doit être compris entre 0 et 100 %.')) return;
+  const c = calcPesee(f), x = parc(f.m.parc), id = 'TK-' + pad(S.seq.tk++);
+  c.det.forEach(([a, t]) => { a.rb = Math.round(a.rb + t); });
+  x.livT = +(x.livT + c.net / 1000).toFixed(2); f.m.done = 1;
+  const cloture = f.last || x.livT >= volP(x) * .98; if (cloture) x.s = 5;
+  S.pesees.unshift({ id, h: nowHM(), date: iso(new Date()), prod: f.prod, parc: x.id, veh: f.m.veh ? `${veh(f.m.veh).im} · ${veh(f.m.veh).nom}` : (f.m.plaque || 'Véhicule du producteur'), brut: f.brut, tare: f.tare, refus: f.refus, brix: f.brix, net: c.net, prix: S.cfg.prix, ret: Math.round(c.total), ex: f.ex });
+  S.paiements.unshift({ tk: id, prod: f.prod, mt: Math.round(c.aPayer), st: 0, mode: '', ref: '' });
+  audit(`Pesée ${id} : ${pnom(f.prod)}, ${fmt(c.net)} kg nets${cloture ? ' · récolte clôturée' : ''}`); save(); render(); A.tkt(id);
+};
+const tkRow = (a, b) => `<tr><td class="mute">${a}</td><td>${b}</td></tr>`;
+function ticketHtml(w, title, rows) {
+  return `<div id="tkt" class="ticket"><h2>${title}<span class="badge">${w.id}</span></h2><div class="sm mute">${esc(S.cfg.nom)} · pont-bascule · ${fdate(parse(w.date || iso(new Date())))} ${w.h || ''}</div><table><tbody>${rows}</tbody></table></div>`;
+}
+A.tkt = v => {
+  const w = S.pesees.find(z => z.id === v), p = prod(w.prod), x = parc(w.parc), pay = w.net * (w.prix || S.cfg.prix) - (w.ret || 0) - (w.ex || 0);
+  sheet(`${sheetHead('Ticket de pesée')}${ticketHtml(w, 'Pesée', [['Producteur', esc(p.nom) + ' · ' + esc(p.grp)], ['Parcelle', x ? esc(x.nom) : '—'], ['Véhicule', esc(w.veh || '—')], ['Poids brut', fmt(w.brut) + ' kg'], ['Poids à vide (tare)', fmt(w.tare || 0) + ' kg'], ['Poids net (brut − tare)', fmt(w.brut - (w.tare || 0)) + ' kg'], ['Refus qualité', w.refus + ' %'], w.brix ? ['Degré Brix', fmt1(w.brix) + ' °Bx'] : null, ['Net accepté', fmt(w.net) + ' kg'], ['Remboursement crédit', F(w.ret || 0)], ['Autres retenues', F(w.ex || 0)], ['Net à payer (' + fmt(w.prix || S.cfg.prix) + ' F/kg)', `<b>${F(pay)}</b>`]].filter(Boolean).map(r => tkRow(...r)).join(''))}
+    <div class="row noprint">${btn('Imprimer', 'prt', undefined, '', 'printer')}${btn('Fermer', 'mc', undefined, 'line')}</div>`);
+};
+A.prt = () => window.print();
+
+/* 7.6 Avances d'intrants */
+A.anew = () => U.role === 'appro' ? (sheet(`${sheetHead('Nouvelle demande d\'avance')}<div class="form">${field('Producteur', `<select id="ap">${opts(S.producteurs.map(p => [p.id, p.nom]), S.producteurs[0].id)}</select>`)}${field('Objet', `<select id="ao">${opts(OBJETS_AV.map(o => [o, o]), 'Engrais')}</select>`)}
+  ${field('Montant des intrants estimé (F)', '<input id="ae" type="number" min="0" inputmode="numeric" value="300000" data-inp="arv">')}${field('Taux de remboursement (%)', `<input id="at" type="number" min="0" step="0.5" value="${S.cfg.taux}" data-inp="arv">`)}<div class="calc" id="ar"></div></div><div class="row">${btn('Envoyer au DAF', 'asv')}${btn('Annuler', 'mc', undefined, 'line')}</div>`), IN.arv()) : deny();
+IN.arv = () => { const el = $('#ar'); if (!el) return; const e = num('#ae'), t = num('#at'); el.innerHTML = `<div class="xs b mute">À REMBOURSER</div><div class="big num">${F(e * (1 + t / 100))}</div><div class="sm mute">intrants ${F(e)} + ${t} %${e > S.cfg.seuil ? ' · visa du DG requis' : ''}</div>`; };
+A.asv = () => {
+  const e = num('#ae'), t = num('#at'); if (bad(!(e > 0), "Saisissez le montant des intrants estimé.") || bad(!(t >= 0), 'Saisissez un taux valide.')) return;
+  const a = { id: S.seq.av++, prod: +val('#ap'), objet: val('#ao'), est: e, taux: t, m: Math.round(e * (1 + t / 100)), st: 0, rb: 0 };
+  S.avances.push(a); done('Demande envoyée au Responsable DAF', `Demande d'avance ${a.objet} : ${F(e)}, à rembourser ${F(a.m)}`);
+};
+A.av = v => {
+  const a = S.avances.find(z => z.id === +v), q = AV_ACT[a.st]; if (!q || q[0] !== U.role) return deny();
+  a.st = a.st === 0 ? (a.est > S.cfg.seuil ? 1 : 2) : a.st + 1; audit(`Avance ${pnom(a.prod)} (${F(a.m)}) : ${AV_LAB[a.st]}`); toast('Avance : ' + AV_LAB[a.st].toLowerCase()); commit();
+};
+
+/* 7.7 Paiements */
+A.yact = v => {
+  const p = S.paiements.find(z => z.tk === v), a = PAY_ACT[p.st]; if (!a || a[0] !== U.role) return deny();
+  if (p.st === 2) return sheet(`${sheetHead('Payer ' + esc(pnom(p.prod)), p.tk + ' · ' + F(p.mt))}<div class="form">${field('Mode de paiement', `<select id="ym">${opts([['Espèces', 'Espèces'], ['Mobile Money', 'Mobile Money'], ['Chèque', 'Chèque']], 'Espèces')}</select>`)}${field('Référence', '<input id="yr" placeholder="N° de chèque ou de compte Mobile Money">', 'Facultative pour les espèces')}</div><div class="row">${btn('Confirmer le paiement', 'ypay', p.tk)}${btn('Annuler', 'mc', undefined, 'line')}</div>`);
+  p.st++; audit(`${p.tk} · ${PAY_LAB[p.st]}`); toast('Ticket : ' + PAY_LAB[p.st].toLowerCase()); commit();
+};
+A.ypay = v => {
+  const p = S.paiements.find(z => z.tk === v), mode = val('#ym');
+  if (bad(mode === 'Mobile Money' && U.off, 'Mobile Money indisponible hors connexion : choisissez un autre mode ou revenez en ligne.') || bad(mode !== 'Espèces' && !val('#yr').trim(), 'Renseignez la référence du paiement.')) return;
+  p.mode = mode; p.ref = val('#yr').trim(); p.st = 3; done('Paiement effectué · SMS de confirmation au producteur', `${p.tk} payé à ${pnom(p.prod)} (${F(p.mt)}, ${p.mode}${p.ref ? ' ' + p.ref : ''})`);
+};
+A.yrc = v => {
+  const p = S.paiements.find(z => z.tk === v), w = S.pesees.find(z => z.id === v) || { id: p.tk, h: '', date: iso(new Date()) };
+  sheet(`${sheetHead('Reçu de paiement')}${ticketHtml(w, 'Reçu', [['Producteur', esc(pnom(p.prod))], ['Groupement', esc(prod(p.prod).grp)], ['Montant payé', `<b>${F(p.mt)}</b>`], ['Mode', esc(p.mode) + (p.ref ? ' · ' + esc(p.ref) : '')]].map(r => tkRow(...r)).join(''))}<div class="row noprint">${btn('Imprimer', 'prt', undefined, '', 'printer')}${btn('Fermer', 'mc', undefined, 'line')}</div>`);
+};
+
+/* 7.8 Paramètres & identité */
+A.rsv = () => {
+  if (!cap('regles')) return deny();
+  const v = { prix: num('#r-prix'), taux: num('#r-taux'), plafond: num('#r-plaf'), seuil: num('#r-seuil'), itr: num('#r-itr'), rdt: num('#r-rdt') };
+  if (bad(!(v.prix > 0), 'Le prix du kg doit être positif.') || bad(v.plafond < 0 || v.plafond > 100, 'Le plafond de retenue est un pourcentage entre 0 et 100.') || bad(v.itr < 90 || v.itr > 300, 'Délai TIF → récolte : entre 90 et 300 jours.') || bad(v.rdt < 10 || v.rdt > 90, 'Rendement : entre 10 et 90 t/ha.')) return;
+  Object.assign(S.cfg, v); audit(`Règles métier : ${F(v.prix)}/kg · retenue ${v.plafond} % · TIF→récolte ${v.itr} j · ${v.rdt} t/ha`); toast('Règles enregistrées'); commit();
+};
+A.bsv = () => { if (!cap('brand')) return deny(); S.cfg.nom = val('#b-nom').trim() || S.cfg.nom; S.cfg.couleurs = { brand: val('#b-c1'), gold: val('#b-c2'), side: val('#b-c3') }; audit('Identité mise à jour : ' + S.cfg.nom); toast('Identité enregistrée'); commit(); };
+A.bre = () => { if (!cap('brand')) return deny(); Object.assign(S.cfg, { nom: 'Promo Fruits Bénin', logo: '', couleurs: { brand: '', gold: '', side: '' } }); audit('Identité réinitialisée'); toast('Identité par défaut rétablie'); commit(); };
+A.blrs = () => { S.cfg.logo = ''; commit(); };
+CH.logo = (v, t) => {
+  if (!t.files[0]) return; const r = new FileReader();
+  r.onload = () => { const im = new Image(); im.onload = () => { try { const c = document.createElement('canvas'), k = Math.min(1, 160 / Math.max(im.width, im.height)); c.width = im.width * k; c.height = im.height * k; c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); S.cfg.logo = c.toDataURL('image/png'); } catch (x) { S.cfg.logo = r.result; } commit(); }; im.onerror = () => toast('Image illisible', true); im.src = r.result; };
+  r.readAsDataURL(t.files[0]);
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   8. DÉMARRAGE — un seul jeu d'écouteurs pour toute l'application
+   ═══════════════════════════════════════════════════════════════════════════ */
+document.addEventListener('click', e => { const t = e.target.closest('[data-a]'); if (t && A[t.dataset.a]) A[t.dataset.a](t.dataset.v, t, e); });
+document.addEventListener('change', e => { const t = e.target, c = t.dataset && t.dataset.chg; if (c && CH[c]) CH[c](t.value, t, e); });
+document.addEventListener('input', e => { const t = e.target, c = t.dataset && t.dataset.inp; if (c && IN[c]) IN[c](t.value, t, e); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && (U.sheet || U.dp !== null)) A.mc();
+  if (e.key === 'Enter' && e.target.matches && e.target.matches('tr[data-a]')) e.target.click();
+});
+load();
+U.prodF.year = String(S.annee);
+render();
+
+</script>
+</body>
+</html>
